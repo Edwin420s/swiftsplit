@@ -3,6 +3,14 @@ require('dotenv').config();
 
 class BlockchainService {
   constructor() {
+    if (!process.env.PRIVATE_KEY || process.env.PRIVATE_KEY === '0xyour_arc_wallet_private_key') {
+      console.warn('PRIVATE_KEY not set or using placeholder. Blockchain operations will be disabled.');
+      this.provider = null;
+      this.wallet = null;
+      this.contract = null;
+      return;
+    }
+
     this.provider = new ethers.JsonRpcProvider(process.env.ARC_RPC_URL);
     this.wallet = new ethers.Wallet(process.env.PRIVATE_KEY, this.provider);
     this.contract = new ethers.Contract(
@@ -20,15 +28,22 @@ class BlockchainService {
   }
 
   async executePayment(recipients, amounts) {
+    if (!this.contract) {
+      return {
+        success: false,
+        error: 'Blockchain service not initialized. Please set PRIVATE_KEY in environment variables.'
+      };
+    }
+
     try {
       // Convert amounts to wei (USDC uses 6 decimals)
-      const amountsInWei = amounts.map(amount => 
+      const amountsInWei = amounts.map(amount =>
         ethers.parseUnits(amount.toString(), 6)
       );
 
       const transaction = await this.contract.executePayment(recipients, amountsInWei);
       const receipt = await transaction.wait();
-      
+
       return {
         success: true,
         transactionHash: receipt.hash,
@@ -44,6 +59,10 @@ class BlockchainService {
   }
 
   async getUSDCBalance(walletAddress) {
+    if (!this.provider) {
+      return '0';
+    }
+
     try {
       // USDC contract on Arc
       const usdcContract = new ethers.Contract(
@@ -51,7 +70,7 @@ class BlockchainService {
         ['function balanceOf(address) view returns (uint256)'],
         this.provider
       );
-      
+
       const balance = await usdcContract.balanceOf(walletAddress);
       return ethers.formatUnits(balance, 6);
     } catch (error) {

@@ -18,7 +18,7 @@ module.exports = {
   networks: {
     // Arc Testnet
     arcTestnet: {
-      url: process.env.ARC_RPC_URL || "https://sepolia-rpc.arc.network",
+      url: process.env.ARC_RPC_URL || "https://api-sepolia.arcscan.network/rpc",
       chainId: 47279324479,
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       gasPrice: 2000000000,

@@ -113,7 +113,9 @@ class PaymentController {
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
     }
-    async createTeamPayment(req, res) {
+  }
+
+  async createTeamPayment(req, res) {
     try {
       const { teamId, totalAmount, description } = req.body;
       const payerWallet = req.user.walletAddress;
