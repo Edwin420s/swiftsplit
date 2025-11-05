@@ -4,9 +4,11 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
-contract SwiftSplit is Ownable, ReentrancyGuard {
+contract SwiftSplit is Ownable, ReentrancyGuard, Pausable {
     IERC20 public usdcToken;
+    uint256 public maxPaymentAmount;
     
     enum PaymentStatus { PENDING, COMPLETED, FAILED, CANCELLED }
     
@@ -21,6 +23,7 @@ contract SwiftSplit is Ownable, ReentrancyGuard {
     }
     
     mapping(bytes32 => Payment) public payments;
+    mapping(address => bool) public authorizedControllers;
     
     event PaymentCreated(
         bytes32 indexed paymentId,
@@ -41,16 +44,42 @@ contract SwiftSplit is Ownable, ReentrancyGuard {
         string reason
     );
 
-    constructor(address _usdcAddress) {
+    event ControllerUpdated(address controller, bool authorized);
+
+    modifier onlyController() {
+        require(authorizedControllers[msg.sender] || msg.sender == owner(), "Not authorized");
+        _;
+    }
+
+    constructor(address _usdcAddress, uint256 _maxPaymentAmount) {
         require(_usdcAddress != address(0), "Invalid USDC address");
         usdcToken = IERC20(_usdcAddress);
+        maxPaymentAmount = _maxPaymentAmount;
+        authorizedControllers[msg.sender] = true;
+    }
+
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    function unpause() external onlyOwner {
+        _unpause();
+    }
+
+    function setMaxPaymentAmount(uint256 _maxAmount) external onlyOwner {
+        maxPaymentAmount = _maxAmount;
+    }
+
+    function setController(address _controller, bool _authorized) external onlyOwner {
+        authorizedControllers[_controller] = _authorized;
+        emit ControllerUpdated(_controller, _authorized);
     }
 
     function createPayment(
         address[] memory _recipients,
         uint256[] memory _amounts,
         string memory _invoiceId
-    ) external returns (bytes32) {
+    ) external whenNotPaused returns (bytes32) {
         require(_recipients.length > 0, "No recipients specified");
         require(_recipients.length == _amounts.length, "Recipients and amounts length mismatch");
         
@@ -61,14 +90,18 @@ contract SwiftSplit is Ownable, ReentrancyGuard {
             totalAmount += _amounts[i];
         }
         
+        require(totalAmount <= maxPaymentAmount, "Payment amount exceeds maximum");
         require(usdcToken.balanceOf(msg.sender) >= totalAmount, "Insufficient USDC balance");
         require(usdcToken.allowance(msg.sender, address(this)) >= totalAmount, "Insufficient allowance");
         
         bytes32 paymentId = keccak256(abi.encodePacked(
             msg.sender,
             _invoiceId,
-            block.timestamp
+            block.timestamp,
+            block.prevrandao
         ));
+        
+        require(payments[paymentId].payer == address(0), "Payment ID collision");
         
         payments[paymentId] = Payment({
             payer: msg.sender,
@@ -85,11 +118,12 @@ contract SwiftSplit is Ownable, ReentrancyGuard {
         return paymentId;
     }
 
-    function executePayment(bytes32 _paymentId) external nonReentrant {
+    function executePayment(bytes32 _paymentId) external nonReentrant whenNotPaused {
         Payment storage payment = payments[_paymentId];
         
         require(payment.payer != address(0), "Payment does not exist");
         require(payment.status == PaymentStatus.PENDING, "Payment already processed");
+        require(msg.sender == payment.payer || authorizedControllers[msg.sender], "Not authorized");
         
         uint256 totalAmount = 0;
         for (uint256 i = 0; i < payment.amounts.length; i++) {
@@ -125,14 +159,22 @@ contract SwiftSplit is Ownable, ReentrancyGuard {
         
         require(payment.payer != address(0), "Payment does not exist");
         require(
-            msg.sender == payment.payer || msg.sender == owner(),
-            "Only payer or owner can cancel"
+            msg.sender == payment.payer || msg.sender == owner() || authorizedControllers[msg.sender],
+            "Not authorized to cancel"
         );
         require(payment.status == PaymentStatus.PENDING, "Payment not pending");
         
         payment.status = PaymentStatus.CANCELLED;
         
-        emit PaymentFailed(_paymentId, "Payment cancelled by user");
+        emit PaymentFailed(_paymentId, "Payment cancelled");
+    }
+
+    function emergencyCancel(bytes32 _paymentId) external onlyOwner {
+        Payment storage payment = payments[_paymentId];
+        require(payment.status == PaymentStatus.PENDING, "Payment not pending");
+        
+        payment.status = PaymentStatus.CANCELLED;
+        emit PaymentFailed(_paymentId, "Emergency cancelled by owner");
     }
 
     function getPayment(bytes32 _paymentId) external view returns (
