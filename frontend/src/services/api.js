@@ -1,106 +1,145 @@
-// Mock API service for demonstration
-const API_BASE_URL = 'https://api.swiftsplit.com'
+// SwiftSplit API Client
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'
 
-// Simulate API delay
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+// Axios-like fetch wrapper
+const request = async (url, options = {}) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      },
+      ...options
+    })
+
+    const data = await response.json()
+    
+    if (!response.ok) {
+      throw new Error(data.error || data.message || 'Request failed')
+    }
+
+    return data
+  } catch (error) {
+    console.error(`API request failed: ${url}`, error)
+    throw error
+  }
+}
 
 export const api = {
   // Payment endpoints
   payments: {
     create: async (paymentData) => {
-      await delay(1000)
-      return {
-        success: true,
-        data: {
-          id: Date.now(),
-          ...paymentData,
-          status: 'pending',
-          transactionHash: `0x${Math.random().toString(16).substr(2, 64)}`,
-          timestamp: new Date().toISOString()
-        }
-      }
+      return await request('/payments', {
+        method: 'POST',
+        body: JSON.stringify(paymentData)
+      })
     },
     
-    list: async () => {
-      await delay(500)
-      return {
-        success: true,
-        data: [
-          {
-            id: 1,
-            amount: 120,
-            currency: 'USDC',
-            status: 'completed',
-            recipient: 'Jane Designer',
-            date: '2024-01-15',
-            type: 'single'
-          }
-        ]
-      }
+    list: async (params = {}) => {
+      const query = new URLSearchParams(params).toString()
+      return await request(`/payments${query ? '?' + query : ''}`)
+    },
+
+    getById: async (paymentId) => {
+      return await request(`/payments/${paymentId}`)
+    },
+
+    execute: async (paymentId) => {
+      return await request(`/payments/${paymentId}/execute`, {
+        method: 'POST'
+      })
+    },
+
+    cancel: async (paymentId) => {
+      return await request(`/payments/${paymentId}/cancel`, {
+        method: 'POST'
+      })
     }
   },
 
   // AI endpoints
   ai: {
     processInvoice: async (file) => {
-      await delay(2000)
-      return {
-        success: true,
-        data: {
-          recipient: 'Jane Designer',
-          amount: 120,
-          currency: 'USDC',
-          description: 'Website design services',
-          confidence: 0.95
-        }
-      }
+      const formData = new FormData()
+      formData.append('invoice', file)
+
+      return await request('/ai/parse-invoice', {
+        method: 'POST',
+        headers: {},
+        body: formData
+      })
     },
     
+    processChat: async (message) => {
+      return await request('/ai/parse-chat', {
+        method: 'POST',
+        body: JSON.stringify({ message })
+      })
+    },
+
     processVoice: async (audioBlob) => {
-      await delay(1500)
-      return {
-        success: true,
-        data: {
-          intent: 'payment',
-          recipient: 'Mike Developer',
-          amount: 200,
-          currency: 'USDC',
-          description: 'Backend development',
-          confidence: 0.92
-        }
-      }
+      const formData = new FormData()
+      formData.append('audio', audioBlob)
+
+      return await request('/voice/process', {
+        method: 'POST',
+        headers: {},
+        body: formData
+      })
     }
   },
 
   // Team endpoints
   team: {
     list: async () => {
-      await delay(500)
-      return {
-        success: true,
-        data: [
-          {
-            id: 1,
-            name: 'Jane Designer',
-            email: 'jane@example.com',
-            wallet: '0x742d35Cc6634C893292',
-            role: 'Designer',
-            defaultSplit: 40
-          }
-        ]
-      }
+      return await request('/teams')
     },
     
-    add: async (member) => {
-      await delay(800)
-      return {
-        success: true,
-        data: {
-          id: Date.now(),
-          ...member,
-          joined: new Date().toISOString()
-        }
-      }
+    create: async (teamData) => {
+      return await request('/teams', {
+        method: 'POST',
+        body: JSON.stringify(teamData)
+      })
+    },
+
+    update: async (teamId, teamData) => {
+      return await request(`/teams/${teamId}`, {
+        method: 'PUT',
+        body: JSON.stringify(teamData)
+      })
+    },
+
+    delete: async (teamId) => {
+      return await request(`/teams/${teamId}`, {
+        method: 'DELETE'
+      })
+    }
+  },
+
+  // Wallet endpoints
+  wallet: {
+    getBalance: async (walletAddress) => {
+      return await request(`/wallets/${walletAddress}/balance`)
+    },
+
+    create: async (userData) => {
+      return await request('/wallets', {
+        method: 'POST',
+        body: JSON.stringify(userData)
+      })
+    }
+  },
+
+  // Analytics endpoints
+  analytics: {
+    getOverview: async (params = {}) => {
+      const query = new URLSearchParams(params).toString()
+      return await request(`/analytics/overview${query ? '?' + query : ''}`)
+    },
+
+    getPaymentStats: async (params = {}) => {
+      const query = new URLSearchParams(params).toString()
+      return await request(`/analytics/payments${query ? '?' + query : ''}`)
     }
   }
 }

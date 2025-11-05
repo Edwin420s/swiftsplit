@@ -209,6 +209,67 @@ class AdvancedInvoiceParser {
     return header;
   }
 
+  extractRecipient(recipientLines) {
+    // Look for recipient name in "Bill To" or "Pay To" section
+    const recipientPatterns = [
+      /(?:bill to|pay to|ship to)\s*[:\s]+(.+)/i,
+      /(?:recipient|freelancer|vendor)\s*[:\s]+(.+)/i
+    ];
+    
+    for (const line of recipientLines) {
+      for (const pattern of recipientPatterns) {
+        const match = line.match(pattern);
+        if (match && match[1].trim().length > 2) {
+          return [match[1].trim()];
+        }
+      }
+    }
+    
+    return null;
+  }
+
+  extractPayer(payerLines) {
+    // Look for payer name in "From" or "Bill From" section
+    const payerPatterns = [
+      /(?:from|bill from)\s*[:\s]+(.+)/i,
+      /(?:client|company)\s*[:\s]+(.+)/i
+    ];
+    
+    for (const line of payerLines) {
+      for (const pattern of payerPatterns) {
+        const match = line.match(pattern);
+        if (match && match[1].trim().length > 2) {
+          return [match[1].trim()];
+        }
+      }
+    }
+    
+    return null;
+  }
+
+  extractTotals(totalLines) {
+    // Extract lines that contain total amounts
+    const totals = [];
+    const totalPattern = /(?:total|amount|balance|due|subtotal|grand total)/i;
+    
+    for (const line of totalLines) {
+      if (totalPattern.test(line) && /\d/.test(line)) {
+        totals.push(line);
+      }
+    }
+    
+    return totals;
+  }
+
+  extractMetadata(lines) {
+    return {
+      lineCount: lines.length,
+      hasInvoiceNumber: lines.some(line => /invoice.*#?\d+/i.test(line)),
+      hasDate: lines.some(line => /\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/.test(line)),
+      complexity: lines.length > 50 ? 'high' : lines.length > 20 ? 'medium' : 'low'
+    };
+  }
+
   extractLineItems(itemLines) {
     const items = [];
     const itemPattern = /^(.+?)\s+(\d+)\s*\$?(\d+\.?\d*)/i;

@@ -8,10 +8,7 @@
     "dev": "nodemon server.js",
     "test": "jest --verbose",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "docs": "node generate-docs.js"
+    "test:coverage": "jest --coverage"
   },
   "keywords": [
     "ai",
@@ -31,9 +28,7 @@
     "tesseract.js": "^5.0.0",
     "pdf-parse": "^1.1.1",
     "sharp": "^0.32.0",
-    "axios": "^1.6.0",
-    "yamljs": "^0.3.0",
-    "swagger-ui-express": "^5.0.0"
+    "axios": "^1.6.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.0",
