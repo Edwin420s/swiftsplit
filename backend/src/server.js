@@ -61,3 +61,41 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`SwiftSplit backend running on port ${PORT}`);
 });
+
+// Update src/server.js with enhanced real-time features
+const socketAuth = require('./middleware/socketAuth');
+
+// Socket.io authentication and event handling
+io.use(socketAuth);
+
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.userId);
+  
+  // Join user to their personal room
+  socket.join(`user_${socket.userId}`);
+  
+  socket.on('join_team', (teamId) => {
+    socket.join(`team_${teamId}`);
+    console.log(`User ${socket.userId} joined team ${teamId}`);
+  });
+
+  socket.on('payment_status', (data) => {
+    // Broadcast to relevant users
+    socket.to(`user_${data.recipientId}`).emit('payment_received', data);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.userId);
+  });
+});
+
+// New endpoint for analytics
+app.get('/api/analytics/payments', authMiddleware, async (req, res) => {
+  try {
+    const { timeframe } = req.query;
+    const analytics = await paymentService.getPaymentAnalytics(req.user.walletAddress, timeframe);
+    res.json({ success: true, analytics });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});

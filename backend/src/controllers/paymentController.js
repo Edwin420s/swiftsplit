@@ -2,6 +2,7 @@ const Payment = require('../models/Payment');
 const User = require('../models/User');
 const blockchainService = require('../services/blockchainService');
 const aiService = require('../services/aiService');
+const paymentService = require('../services/paymentService');
 
 class PaymentController {
   async createPayment(req, res) {
@@ -109,6 +110,46 @@ class PaymentController {
           aiLogId: parsedData.logId
         }
       }, res);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+    async createTeamPayment(req, res) {
+    try {
+      const { teamId, totalAmount, description } = req.body;
+      const payerWallet = req.user.walletAddress;
+
+      const result = await paymentService.processTeamPayment(
+        payerWallet,
+        teamId,
+        totalAmount,
+        description
+      );
+
+      if (result.success) {
+        // Emit real-time update
+        req.app.get('socketio').emit('team_payment_completed', {
+          paymentId: result.paymentId,
+          teamId,
+          splits: result.splits
+        });
+
+        res.json(result);
+      } else {
+        res.status(500).json(result);
+      }
+    } catch (error) {
+      console.error('Team payment error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  async getPaymentAnalytics(req, res) {
+    try {
+      const { timeframe } = req.query;
+      const userId = req.user.walletAddress;
+
+      const analytics = await paymentService.getPaymentAnalytics(userId, timeframe);
+      res.json({ success: true, analytics });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
     }
