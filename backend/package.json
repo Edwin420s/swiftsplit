@@ -51,4 +51,22 @@
     "node": ">=18.0.0",
     "npm": ">=8.0.0"
   }
+  {
+  "name": "swiftsplit-smart-contracts",
+  "version": "1.0.0",
+  "description": "Smart contracts for SwiftSplit payment system",
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "deploy": "npx hardhat run scripts/deploy.js --network arc-testnet",
+    "test": "npx hardhat test",
+    "verify": "npx hardhat verify --network arc-testnet"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
+    "hardhat": "^2.17.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.9.0"
+  }
+}
 }
