@@ -1,9 +1,6 @@
 const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
-const swaggerUi = require('swagger-ui-express');
-const YAML = require('yamljs');
-
 const swiftSplitAI = require('./index');
 const configManager = require('./shared/configManager');
 const { ErrorHandler } = require('./shared/errorHandler');
@@ -25,10 +22,6 @@ const upload = multer({
     fileSize: configManager.get('ai.maxFileSize')
   }
 });
-
-// Swagger documentation
-const swaggerDocument = YAML.load('./docs/swagger.yaml');
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -200,7 +193,6 @@ async function startServer() {
 
     app.listen(PORT, () => {
       console.log(`SwiftSplit AI Modules API running on port ${PORT}`);
-      console.log(`API Documentation: http://localhost:${PORT}/api-docs`);
       console.log(`Health Check: http://localhost:${PORT}/health`);
     });
 
