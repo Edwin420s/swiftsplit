@@ -6,35 +6,42 @@ async function main() {
   const [deployer] = await ethers.getSigners();
   console.log("📝 Deploying contracts with account:", deployer.address);
   
-  // Arc testnet USDC address (example - replace with actual)
-  const USDC_ADDRESS = process.env.USDC_ADDRESS || "0xYourUSDCAddressOnArc";
   const MAX_PAYMENT_AMOUNT = ethers.utils.parseUnits("10000", 6); // $10,000 max
   
-  console.log("📦 Deploying MockUSDC for testing...");
-  const MockUSDC = await ethers.getContractFactory("MockUSDC");
-  const mockUSDC = await MockUSDC.deploy(6);
-  await mockUSDC.deployed();
-  console.log("✅ MockUSDC deployed to:", mockUSDC.address);
+  // Deploy MockUSDC for testing or use existing USDC on mainnet
+  let usdcAddress;
+  if (process.env.USDC_ADDRESS) {
+    usdcAddress = process.env.USDC_ADDRESS;
+    console.log("📌 Using existing USDC at:", usdcAddress);
+  } else {
+    console.log("📦 Deploying MockUSDC for testing...");
+    const MockUSDC = await ethers.getContractFactory("MockUSDC");
+    const mockUSDC = await MockUSDC.deploy(6);
+    await mockUSDC.deployed();
+    usdcAddress = mockUSDC.address;
+    console.log("✅ MockUSDC deployed to:", usdcAddress);
+  }
   
   console.log("📦 Deploying SwiftSplit...");
   const SwiftSplit = await ethers.getContractFactory("SwiftSplit");
-  const swiftSplit = await SwiftSplit.deploy(USDC_ADDRESS, MAX_PAYMENT_AMOUNT);
+  const swiftSplit = await SwiftSplit.deploy(usdcAddress, MAX_PAYMENT_AMOUNT);
   await swiftSplit.deployed();
   console.log("✅ SwiftSplit deployed to:", swiftSplit.address);
   
   console.log("📦 Deploying TeamSplitter...");
   const TeamSplitter = await ethers.getContractFactory("TeamSplitter");
-  const teamSplitter = await TeamSplitter.deploy(USDC_ADDRESS);
+  const MAX_TEAM_PAYMENT = ethers.utils.parseUnits("50000", 6); // $50,000 max for team payments
+  const teamSplitter = await TeamSplitter.deploy(usdcAddress, MAX_TEAM_PAYMENT);
   await teamSplitter.deployed();
   console.log("✅ TeamSplitter deployed to:", teamSplitter.address);
   
   console.log("\n📋 Deployment Summary:");
   console.log("====================");
-  console.log("MockUSDC (test):", mockUSDC.address);
+  console.log("USDC Token:", usdcAddress);
   console.log("SwiftSplit Contract:", swiftSplit.address);
   console.log("TeamSplitter Contract:", teamSplitter.address);
-  console.log("USDC Token:", USDC_ADDRESS);
-  console.log("Max Payment Amount:", MAX_PAYMENT_AMOUNT.toString());
+  console.log("Max Payment Amount:", ethers.utils.formatUnits(MAX_PAYMENT_AMOUNT, 6), "USDC");
+  console.log("Max Team Payment:", ethers.utils.formatUnits(MAX_TEAM_PAYMENT, 6), "USDC");
   console.log("Deployer:", deployer.address);
   
   // Verify contracts (if using verified deployment)
