@@ -1,5 +1,7 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
+require("hardhat-gas-reporter");
+require("solidity-coverage");
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
@@ -19,10 +21,10 @@ module.exports = {
       url: process.env.ARC_RPC_URL || "https://sepolia-rpc.arc.network",
       chainId: 47279324479,
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-      gasPrice: 2000000000, // 2 gwei
+      gasPrice: 2000000000,
       timeout: 60000
     },
-    // Arc Mainnet (for future use)
+    // Arc Mainnet
     arcMainnet: {
       url: process.env.ARC_MAINNET_RPC_URL || "https://rpc.arc.network",
       chainId: 1244,
