@@ -99,3 +99,9 @@ app.get('/api/analytics/payments', authMiddleware, async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+require('dotenv').config();
+const App = require('./app');
+
+const app = new App();
+app.start();
