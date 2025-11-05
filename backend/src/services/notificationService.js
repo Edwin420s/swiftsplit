@@ -1,4 +1,5 @@
 const EmailService = require('./emailService');
+const logger = require('../utils/logger');
 
 class NotificationService {
   constructor() {
@@ -17,7 +18,7 @@ class NotificationService {
           paymentId: payment.id,
           amount: payment.amount,
           transactionHash: payment.transactionHash,
-          timestamp: new Date()
+          timestamp: new Date().toISOString()
         });
 
         // Notify recipients
@@ -26,13 +27,14 @@ class NotificationService {
             paymentId: payment.id,
             amount: recipient.amount,
             from: payment.payerWallet,
-            timestamp: new Date()
+            timestamp: new Date().toISOString()
           });
         });
       }
 
       // Email notifications
-      const payerUser = await require('../models/User').findOne({ 
+      const User = require('../models/User');
+      const payerUser = await User.findOne({ 
         where: { walletAddress: payment.payerWallet } 
       });
 
@@ -47,7 +49,7 @@ class NotificationService {
 
       // Notify recipients via email
       for (const recipient of recipients) {
-        const recipientUser = await require('../models/User').findOne({ 
+        const recipientUser = await User.findOne({ 
           where: { walletAddress: recipient.walletAddress } 
         });
         
@@ -61,9 +63,10 @@ class NotificationService {
         }
       }
 
+      logger.info(`Payment notifications sent for payment ${payment.id}`);
       return { success: true };
     } catch (error) {
-      console.error('Notification error:', error);
+      logger.error('Payment notification error:', error);
       return { success: false, error: error.message };
     }
   }
@@ -76,7 +79,7 @@ class NotificationService {
           teamId: team.id,
           totalAmount: payment.amount,
           splits: splits,
-          timestamp: new Date()
+          timestamp: new Date().toISOString()
         });
       }
 
@@ -107,9 +110,10 @@ class NotificationService {
         }
       }
 
+      logger.info(`Team payment notifications sent for team ${team.id}, payment ${payment.id}`);
       return { success: true };
     } catch (error) {
-      console.error('Team notification error:', error);
+      logger.error('Team notification error:', error);
       return { success: false, error: error.message };
     }
   }
@@ -120,23 +124,43 @@ class NotificationService {
         this.io.to(`user_${payment.payerWallet}`).emit('payment_failed', {
           paymentId: payment.id,
           error: error.message,
-          timestamp: new Date()
+          timestamp: new Date().toISOString()
         });
       }
 
-      const user = await require('../models/User').findOne({ 
+      const User = require('../models/User');
+      const user = await User.findOne({ 
         where: { walletAddress: payment.payerWallet } 
       });
 
       if (user && user.email) {
-        // Send failure email (you'd need to implement this in EmailService)
-        console.log(`Payment failed email would be sent to: ${user.email}`);
+        // In a real implementation, you'd send a failure email
+        logger.info(`Payment failure notification would be sent to: ${user.email}`);
       }
 
+      logger.warn(`Payment failed notification sent for payment ${payment.id}`);
       return { success: true };
     } catch (notificationError) {
-      console.error('Failure notification error:', notificationError);
+      logger.error('Failure notification error:', notificationError);
       return { success: false, error: notificationError.message };
+    }
+  }
+
+  async notifyInvoiceParsed(userId, invoiceData, success) {
+    try {
+      if (this.io) {
+        this.io.to(`user_${userId}`).emit('invoice_parsed', {
+          success,
+          data: invoiceData,
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      logger.info(`Invoice parsed notification sent to user ${userId}`);
+      return { success: true };
+    } catch (error) {
+      logger.error('Invoice notification error:', error);
+      return { success: false, error: error.message };
     }
   }
 }
