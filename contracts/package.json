@@ -10,6 +10,9 @@
     "deploy:mainnet": "hardhat run scripts/deploy.js --network arcMainnet",
     "verify": "hardhat run scripts/verify.js --network arcTestnet",
     "verify:mainnet": "hardhat run scripts/verify.js --network arcMainnet",
+    "interact": "hardhat run scripts/interact.js --network arcTestnet",
+    "sample-data": "hardhat run scripts/create-sample-data.js --network arcTestnet",
+    "monitor": "hardhat run scripts/monitor.js --network arcTestnet",
     "test": "hardhat test",
     "test:coverage": "hardhat coverage",
     "test:gas": "REPORT_GAS=true hardhat test",
@@ -23,7 +26,9 @@
     "payments",
     "freelance",
     "blockchain",
-    "defi"
+    "defi",
+    "ai",
+    "cross-border"
   ],
   "author": "SwiftSplit Team",
   "license": "MIT",
