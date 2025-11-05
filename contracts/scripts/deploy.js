@@ -1,4 +1,5 @@
-const { ethers } = require("hardhat");
+const { ethers, network } = require("hardhat");
+const { saveDeployment } = require("./save-deployment");
 
 async function main() {
   console.log("🚀 Deploying SwiftSplit contracts to Arc...");
@@ -44,9 +45,17 @@ async function main() {
   console.log("Max Team Payment:", ethers.utils.formatUnits(MAX_TEAM_PAYMENT, 6), "USDC");
   console.log("Deployer:", deployer.address);
   
-  // Verify contracts (if using verified deployment)
-  console.log("\n🔍 Verifying contracts...");
-  // Add verification logic here if needed
+  // Save deployment addresses
+  saveDeployment(network.name, {
+    usdcToken: usdcAddress,
+    swiftSplit: swiftSplit.address,
+    teamSplitter: teamSplitter.address,
+    deployer: deployer.address,
+    maxPaymentAmount: MAX_PAYMENT_AMOUNT.toString(),
+    maxTeamPayment: MAX_TEAM_PAYMENT.toString()
+  });
+  
+  console.log("\n✅ Deployment complete!");
 }
 
 main()
