@@ -3,7 +3,7 @@ import React, { useEffect } from 'react'
 const Toast = ({ 
   message, 
   type = 'info', 
-  onClose, 
+  onClose,
   duration = 5000 
 }) => {
   useEffect(() => {
@@ -29,13 +29,15 @@ const Toast = ({
   }
 
   return (
-    <div className={`fixed top-20 right-6 z-50 border rounded-lg p-4 shadow-lg ${typeStyles[type]}`}>
-      <div className="flex items-center space-x-3">
-        <span className="text-lg">{typeIcons[type]}</span>
-        <span className="font-medium">{message}</span>
+    <div className={`min-w-80 border rounded-lg p-4 shadow-lg ${typeStyles[type]} animate-in slide-in-from-right-full`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <span className="text-lg">{typeIcons[type]}</span>
+          <span className="font-medium">{message}</span>
+        </div>
         <button
           onClick={onClose}
-          className="ml-4 text-gray-500 hover:text-gray-700 transition-colors"
+          className="ml-4 text-gray-500 hover:text-gray-700 transition-colors flex-shrink-0"
         >
           ✕
         </button>
