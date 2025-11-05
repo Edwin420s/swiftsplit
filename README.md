@@ -90,7 +90,7 @@ SwiftSplit solves these problems with AI-powered payment automation on Arc block
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/yourorg/swiftsplit.git
+git clone https://github.com/Edwin420s/swiftsplit.git
 cd swiftsplit
 ```
 

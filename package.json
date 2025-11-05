@@ -1,0 +1,38 @@
+{
+  "name": "swiftsplit",
+  "version": "1.0.0",
+  "description": "SwiftSplit - Fast, simple cross-border payments for freelancers and teams",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend",
+    "contracts",
+    "ai-modules"
+  ],
+  "scripts": {
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install && cd ../contracts && npm install && cd ../ai-modules && npm install",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:ai": "cd ai-modules && npm run dev",
+    "dev:db": "docker-compose up -d",
+    "dev:all": "concurrently \"npm run dev:db\" \"npm run dev:backend\" \"npm run dev:ai\" \"npm run dev:frontend\"",
+    "build:all": "cd frontend && npm run build && cd ../backend && npm run build && cd ../contracts && npm run compile",
+    "test:all": "cd backend && npm test && cd ../contracts && npm test",
+    "deploy:contracts": "cd contracts && npm run deploy",
+    "stop:db": "docker-compose down"
+  },
+  "keywords": [
+    "blockchain",
+    "payments",
+    "usdc",
+    "arc",
+    "freelance",
+    "cross-border",
+    "ai"
+  ],
+  "author": "SwiftSplit Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}
