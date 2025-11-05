@@ -1,4 +1,4 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Op } = require('sequelize');
 const sequelize = require('../config/database');
 const User = require('./User');
 
@@ -12,15 +12,22 @@ const Team = sequelize.define('Team', {
     type: DataTypes.STRING,
     allowNull: false,
     validate: {
-      notEmpty: true
+      notEmpty: true,
+      len: [1, 100]
     }
   },
   description: {
-    type: DataTypes.TEXT
+    type: DataTypes.TEXT,
+    validate: {
+      len: [0, 500]
+    }
   },
   defaultSplitType: {
     type: DataTypes.ENUM('equal', 'percentage', 'fixed'),
-    defaultValue: 'equal'
+    defaultValue: 'equal',
+    validate: {
+      isIn: [['equal', 'percentage', 'fixed']]
+    }
   },
   createdBy: {
     type: DataTypes.UUID,
@@ -32,7 +39,15 @@ const Team = sequelize.define('Team', {
   }
 }, {
   tableName: 'teams',
-  timestamps: true
+  timestamps: true,
+  indexes: [
+    {
+      fields: ['createdBy']
+    },
+    {
+      fields: ['name']
+    }
+  ]
 });
 
 const TeamMember = sequelize.define('TeamMember', {
@@ -67,32 +82,48 @@ const TeamMember = sequelize.define('TeamMember', {
   },
   fixedAmount: {
     type: DataTypes.DECIMAL(12, 2),
-    defaultValue: 0
+    defaultValue: 0,
+    validate: {
+      min: 0
+    }
   },
   isActive: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  role: {
+    type: DataTypes.ENUM('member', 'manager'),
+    defaultValue: 'member'
   }
 }, {
   tableName: 'team_members',
-  timestamps: true
+  timestamps: true,
+  indexes: [
+    {
+      fields: ['teamId', 'userId'],
+      unique: true
+    },
+    {
+      fields: ['userId']
+    }
+  ]
 });
 
 // Associations
 Team.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
 Team.hasMany(TeamMember, { foreignKey: 'teamId', as: 'members' });
-TeamMember.belongsTo(Team, { foreignKey: 'teamId' });
-TeamMember.belongsTo(User, { foreignKey: 'userId' });
-User.hasMany(TeamMember, { foreignKey: 'userId' });
+TeamMember.belongsTo(Team, { foreignKey: 'teamId', as: 'team' });
+TeamMember.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+User.hasMany(TeamMember, { foreignKey: 'userId', as: 'teamMemberships' });
 
-// Instance methods
+// Team Instance Methods
 Team.prototype.getActiveMembers = async function() {
   return await TeamMember.findAll({
     where: { 
       teamId: this.id,
       isActive: true 
     },
-    include: [User]
+    include: [{ model: User, as: 'user' }]
   });
 };
 
@@ -100,45 +131,105 @@ Team.prototype.calculateSplits = function(totalAmount) {
   const members = this.members || [];
   const activeMembers = members.filter(m => m.isActive);
   
+  if (activeMembers.length === 0) {
+    throw new Error('No active team members');
+  }
+
+  let splits;
   switch (this.defaultSplitType) {
     case 'equal':
       const equalAmount = totalAmount / activeMembers.length;
-      return activeMembers.map(member => ({
+      splits = activeMembers.map(member => ({
         userId: member.userId,
-        walletAddress: member.User.walletAddress,
-        amount: equalAmount,
-        percentage: 100 / activeMembers.length
+        walletAddress: member.user.walletAddress,
+        amount: parseFloat(equalAmount.toFixed(2)),
+        percentage: parseFloat((100 / activeMembers.length).toFixed(2))
       }));
+      break;
 
     case 'percentage':
-      return activeMembers.map(member => ({
+      const totalPercentage = activeMembers.reduce((sum, m) => sum + parseFloat(m.splitPercentage), 0);
+      if (Math.abs(totalPercentage - 100) > 0.01) {
+        throw new Error(`Total split percentage must equal 100%, got ${totalPercentage}%`);
+      }
+      splits = activeMembers.map(member => ({
         userId: member.userId,
-        walletAddress: member.User.walletAddress,
-        amount: totalAmount * (member.splitPercentage / 100),
-        percentage: member.splitPercentage
+        walletAddress: member.user.walletAddress,
+        amount: parseFloat((totalAmount * (member.splitPercentage / 100)).toFixed(2)),
+        percentage: parseFloat(member.splitPercentage)
       }));
+      break;
 
     case 'fixed':
-      return activeMembers.map(member => ({
+      const totalFixed = activeMembers.reduce((sum, m) => sum + parseFloat(m.fixedAmount), 0);
+      if (Math.abs(totalFixed - totalAmount) > 0.01) {
+        throw new Error(`Total fixed amounts must equal payment amount, got ${totalFixed} but expected ${totalAmount}`);
+      }
+      splits = activeMembers.map(member => ({
         userId: member.userId,
-        walletAddress: member.User.walletAddress,
-        amount: member.fixedAmount,
-        percentage: (member.fixedAmount / totalAmount) * 100
+        walletAddress: member.user.walletAddress,
+        amount: parseFloat(member.fixedAmount),
+        percentage: parseFloat(((member.fixedAmount / totalAmount) * 100).toFixed(2))
       }));
+      break;
 
     default:
       throw new Error('Invalid split type');
   }
+
+  return splits;
 };
 
-// Static methods
+Team.prototype.addMember = async function(userId, options = {}) {
+  const { splitPercentage = 0, fixedAmount = 0, role = 'member' } = options;
+  
+  return await TeamMember.create({
+    teamId: this.id,
+    userId,
+    splitPercentage,
+    fixedAmount,
+    role
+  });
+};
+
+// Team Static Methods
 Team.getUserTeams = async function(userId) {
   return await Team.findAll({
     include: [{
       model: TeamMember,
+      as: 'members',
       where: { userId },
       required: true
     }]
+  });
+};
+
+Team.findByUserAndId = async function(userId, teamId) {
+  return await Team.findOne({
+    where: { id: teamId },
+    include: [{
+      model: TeamMember,
+      as: 'members',
+      where: { userId },
+      required: true
+    }]
+  });
+};
+
+// TeamMember Instance Methods
+TeamMember.prototype.activate = function() {
+  return this.update({ isActive: true });
+};
+
+TeamMember.prototype.deactivate = function() {
+  return this.update({ isActive: false });
+};
+
+// TeamMember Static Methods
+TeamMember.getUserTeams = async function(userId) {
+  return await TeamMember.findAll({
+    where: { userId, isActive: true },
+    include: [{ model: Team, as: 'team' }]
   });
 };
 
