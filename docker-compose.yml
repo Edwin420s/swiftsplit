@@ -1,26 +1,7 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: swiftsplit-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres_dev_password
-      POSTGRES_DB: swiftsplit
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # MongoDB Database
+  # MongoDB Database (Primary Database - All Data)
   mongodb:
     image: mongo:7-jammy
     container_name: swiftsplit-mongodb
@@ -63,11 +44,6 @@ services:
   #   environment:
   #     NODE_ENV: development
   #     PORT: 5000
-  #     PG_HOST: postgres
-  #     PG_PORT: 5432
-  #     PG_DATABASE: swiftsplit
-  #     PG_USER: postgres
-  #     PG_PASSWORD: postgres_dev_password
   #     MONGODB_URI: mongodb://mongodb:27017/swiftsplit
   #   ports:
   #     - "5000:5000"
@@ -75,15 +51,11 @@ services:
   #     - ./backend:/app
   #     - /app/node_modules
   #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
   #     mongodb:
   #       condition: service_healthy
   #   command: npm run dev
 
 volumes:
-  postgres_data:
-    driver: local
   mongodb_data:
     driver: local
   mongodb_config:

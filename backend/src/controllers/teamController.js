@@ -1,4 +1,4 @@
-const { Team, TeamMember } = require('../models/Team');
+const Team = require('../models/Team');
 const User = require('../models/User');
 
 class TeamController {
@@ -7,34 +7,21 @@ class TeamController {
       const { name, description, defaultSplitType, members } = req.body;
       const createdBy = req.user.id;
 
-      const team = await Team.create({
+      const teamData = {
         name,
         description,
         defaultSplitType,
-        createdBy
-      });
+        createdBy,
+        members: members || []
+      };
 
-      // Add team members
-      if (members && members.length > 0) {
-        const teamMembers = members.map(member => ({
-          teamId: team.id,
-          userId: member.userId,
-          splitPercentage: member.splitPercentage || 0,
-          fixedAmount: member.fixedAmount || 0
-        }));
-        await TeamMember.bulkCreate(teamMembers);
-      }
-
-      const teamWithMembers = await Team.findByPk(team.id, {
-        include: [{
-          model: TeamMember,
-          include: [User]
-        }]
-      });
+      const team = new Team(teamData);
+      await team.save();
+      await team.populate('members.userId', 'name email walletAddress');
 
       res.json({
         success: true,
-        team: teamWithMembers
+        team
       });
     } catch (error) {
       console.error('Team creation error:', error);
@@ -45,27 +32,25 @@ class TeamController {
   async addTeamMember(req, res) {
     try {
       const { teamId } = req.params;
-      const { userId, splitPercentage, fixedAmount } = req.body;
+      const { userId, splitPercentage, fixedAmount, role } = req.body;
 
-      const team = await Team.findByPk(teamId);
+      const team = await Team.findById(teamId);
       if (!team) {
         return res.status(404).json({ success: false, error: 'Team not found' });
       }
 
-      const teamMember = await TeamMember.create({
-        teamId,
-        userId,
+      await team.addMember(userId, {
         splitPercentage: splitPercentage || 0,
-        fixedAmount: fixedAmount || 0
+        fixedAmount: fixedAmount || 0,
+        role: role || 'member'
       });
 
-      const memberWithUser = await TeamMember.findByPk(teamMember.id, {
-        include: [User]
-      });
+      await team.populate('members.userId', 'name email walletAddress');
+      const newMember = team.members[team.members.length - 1];
 
       res.json({
         success: true,
-        member: memberWithUser
+        member: newMember
       });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -77,19 +62,12 @@ class TeamController {
       const { teamId } = req.params;
       const { totalAmount } = req.body;
 
-      const team = await Team.findByPk(teamId, {
-        include: [{
-          model: TeamMember,
-          where: { isActive: true },
-          include: [User]
-        }]
-      });
-
+      const team = await Team.findById(teamId);
       if (!team) {
         return res.status(404).json({ success: false, error: 'Team not found' });
       }
 
-      const splits = this.calculatePaymentSplits(team, parseFloat(totalAmount));
+      const splits = await team.calculateSplits(parseFloat(totalAmount));
       
       res.json({
         success: true,
@@ -101,49 +79,12 @@ class TeamController {
     }
   }
 
-  calculatePaymentSplits(team, totalAmount) {
-    const { TeamMembers, defaultSplitType } = team;
-    
-    switch (defaultSplitType) {
-      case 'equal':
-        const equalAmount = totalAmount / TeamMembers.length;
-        return TeamMembers.map(member => ({
-          userId: member.User.id,
-          walletAddress: member.User.walletAddress,
-          amount: equalAmount,
-          percentage: 100 / TeamMembers.length
-        }));
-
-      case 'percentage':
-        return TeamMembers.map(member => ({
-          userId: member.User.id,
-          walletAddress: member.User.walletAddress,
-          amount: totalAmount * (member.splitPercentage / 100),
-          percentage: member.splitPercentage
-        }));
-
-      case 'fixed':
-        return TeamMembers.map(member => ({
-          userId: member.User.id,
-          walletAddress: member.User.walletAddress,
-          amount: member.fixedAmount,
-          percentage: (member.fixedAmount / totalAmount) * 100
-        }));
-
-      default:
-        throw new Error('Invalid split type');
-    }
-  }
 
   async getTeam(req, res) {
     try {
       const { teamId } = req.params;
-      const team = await Team.findByPk(teamId, {
-        include: [{
-          model: TeamMember,
-          include: [User]
-        }]
-      });
+      const team = await Team.findById(teamId)
+        .populate('members.userId', 'name email walletAddress');
       if (!team) {
         return res.status(404).json({ success: false, error: 'Team not found' });
       }
@@ -155,10 +96,8 @@ class TeamController {
 
   async getUserTeams(req, res) {
     try {
-      const teams = await Team.findAll({
-        where: { createdBy: req.user.id },
-        include: [{ model: TeamMember, include: [User] }]
-      });
+      const teams = await Team.find({ createdBy: req.user.id })
+        .populate('members.userId', 'name email walletAddress');
       return res.json({ success: true, teams });
     } catch (error) {
       return res.status(500).json({ success: false, error: error.message });
@@ -170,39 +109,26 @@ class TeamController {
       const { teamId } = req.params;
       const { name, description, defaultSplitType, members } = req.body;
 
-      const team = await Team.findByPk(teamId);
+      const team = await Team.findById(teamId);
       if (!team) {
         return res.status(404).json({ success: false, error: 'Team not found' });
       }
-      if (team.createdBy !== req.user.id) {
+      if (team.createdBy.toString() !== req.user.id) {
         return res.status(403).json({ success: false, error: 'Not authorized to update team' });
       }
 
-      await team.update({
-        name: name ?? team.name,
-        description: description ?? team.description,
-        defaultSplitType: defaultSplitType ?? team.defaultSplitType
-      });
+      if (name) team.name = name;
+      if (description !== undefined) team.description = description;
+      if (defaultSplitType) team.defaultSplitType = defaultSplitType;
 
       if (Array.isArray(members)) {
-        await TeamMember.destroy({ where: { teamId: team.id } });
-        const teamMembers = members.map(m => ({
-          teamId: team.id,
-          userId: m.userId,
-          splitPercentage: m.splitPercentage || 0,
-          fixedAmount: m.fixedAmount || 0,
-          isActive: m.isActive !== false
-        }));
-        if (teamMembers.length) {
-          await TeamMember.bulkCreate(teamMembers);
-        }
+        team.members = members;
       }
 
-      const updated = await Team.findByPk(team.id, {
-        include: [{ model: TeamMember, include: [User] }]
-      });
+      await team.save();
+      await team.populate('members.userId', 'name email walletAddress');
 
-      return res.json({ success: true, team: updated });
+      return res.json({ success: true, team });
     } catch (error) {
       return res.status(500).json({ success: false, error: error.message });
     }
@@ -211,16 +137,15 @@ class TeamController {
   async deleteTeam(req, res) {
     try {
       const { teamId } = req.params;
-      const team = await Team.findByPk(teamId);
+      const team = await Team.findById(teamId);
       if (!team) {
         return res.status(404).json({ success: false, error: 'Team not found' });
       }
-      if (team.createdBy !== req.user.id) {
+      if (team.createdBy.toString() !== req.user.id) {
         return res.status(403).json({ success: false, error: 'Not authorized to delete team' });
       }
 
-      await TeamMember.destroy({ where: { teamId } });
-      await Team.destroy({ where: { id: teamId } });
+      await Team.findByIdAndDelete(teamId);
 
       return res.json({ success: true });
     } catch (error) {
