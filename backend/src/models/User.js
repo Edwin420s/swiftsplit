@@ -1,98 +1,88 @@
-const { DataTypes } = require('sequelize');
-const { sequelize } = require('../config/database');
+const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-const User = sequelize.define('User', {
-  id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
-    primaryKey: true
-  },
+const UserSchema = new mongoose.Schema({
   email: {
-    type: DataTypes.STRING,
+    type: String,
+    required: true,
     unique: true,
-    allowNull: false,
-    validate: {
-      isEmail: true
-    }
+    lowercase: true,
+    trim: true,
+    match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email']
   },
   password: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    validate: {
-      len: [6, 100]
-    }
+    type: String,
+    required: true,
+    minlength: 6
   },
   name: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    validate: {
-      notEmpty: true
-    }
+    type: String,
+    required: true,
+    trim: true
   },
   role: {
-    type: DataTypes.ENUM('client', 'freelancer', 'team_manager'),
-    allowNull: false,
-    defaultValue: 'freelancer'
+    type: String,
+    enum: ['client', 'freelancer', 'team_manager'],
+    default: 'freelancer'
   },
   walletAddress: {
-    type: DataTypes.STRING,
+    type: String,
     unique: true,
-    allowNull: true // Initially null until wallet is created
+    sparse: true,
+    match: /^0x[a-fA-F0-9]{40}$/
   },
   circleUserId: {
-    type: DataTypes.STRING,
+    type: String,
     unique: true,
-    allowNull: true
+    sparse: true
   },
   walletId: {
-    type: DataTypes.STRING,
+    type: String,
     unique: true,
-    allowNull: true
+    sparse: true
   },
   kycStatus: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
+    type: Boolean,
+    default: false
   },
   isActive: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: true
+    type: Boolean,
+    default: true
   }
 }, {
-  tableName: 'users',
-  timestamps: true,
-  hooks: {
-    beforeCreate: async (user) => {
-      if (user.password) {
-        user.password = await bcrypt.hash(user.password, 12);
-      }
-    },
-    beforeUpdate: async (user) => {
-      if (user.changed('password')) {
-        user.password = await bcrypt.hash(user.password, 12);
-      }
-    }
-  }
+  timestamps: true
+});
+
+// Hash password before saving
+UserSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  this.password = await bcrypt.hash(this.password, 12);
+  next();
 });
 
 // Instance methods
-User.prototype.validatePassword = async function(password) {
+UserSchema.methods.validatePassword = async function(password) {
   return await bcrypt.compare(password, this.password);
 };
 
-User.prototype.toJSON = function() {
-  const values = { ...this.get() };
-  delete values.password;
-  return values;
+UserSchema.methods.toJSON = function() {
+  const obj = this.toObject();
+  delete obj.password;
+  return obj;
 };
 
 // Static methods
-User.findByEmail = async function(email) {
-  return await this.findOne({ where: { email } });
+UserSchema.statics.findByEmail = async function(email) {
+  return await this.findOne({ email });
 };
 
-User.findByWalletAddress = async function(walletAddress) {
-  return await this.findOne({ where: { walletAddress } });
+UserSchema.statics.findByWalletAddress = async function(walletAddress) {
+  return await this.findOne({ walletAddress });
 };
 
-module.exports = User;
+// Indexes
+UserSchema.index({ email: 1 });
+UserSchema.index({ walletAddress: 1 });
+UserSchema.index({ circleUserId: 1 });
+
+module.exports = mongoose.model('User', UserSchema);

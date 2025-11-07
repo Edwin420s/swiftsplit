@@ -5,7 +5,7 @@ const { createServer } = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 
-const { connectPostgreSQL, connectMongoDB, syncPostgreSQL } = require('./config/database');
+const { connectMongoDB } = require('./config/database');
 const { generalLimiter } = require('./middleware/rateLimit');
 const errorMiddleware = require('./middleware/errorMiddleware');
 const socketAuth = require('./middleware/socketAuth');
@@ -39,10 +39,6 @@ class App {
   }
 
   async initializeDatabase() {
-    await connectPostgreSQL();
-    if (process.env.DB_SYNC === 'true') {
-      await syncPostgreSQL();
-    }
     await connectMongoDB();
   }
 
@@ -144,9 +140,9 @@ class App {
 🚀 SwiftSplit Backend Server Started!
 📍 Port: ${port}
 🌍 Environment: ${process.env.NODE_ENV || 'development'}
-📊 PostgreSQL: Connected
 🗄️ MongoDB: Connected
 🔗 Socket.IO: Ready
+📦 Arc Blockchain: Ready
       `);
     });
 

@@ -2,7 +2,8 @@ const express = require('express');
 const authMiddleware = require('../middleware/authMiddleware');
 const paymentService = require('../services/paymentService');
 const ResponseHandler = require('../utils/responseHandler');
-const { Op } = require('sequelize');
+const Payment = require('../models/Payment');
+const Team = require('../models/Team');
 
 const router = express.Router();
 
@@ -22,30 +23,26 @@ router.get('/payments', async (req, res) => {
 
 router.get('/teams', async (req, res) => {
   try {
-    const { Team, TeamMember } = require('../models/Team');
     const userId = req.user.id;
 
-    const userTeams = await Team.findAll({
-      include: [{
-        model: TeamMember,
-        where: { userId },
-        required: true
-      }]
+    const userTeams = await Team.find({
+      'members.userId': userId
     });
 
     const teamStats = await Promise.all(
       userTeams.map(async (team) => {
-        const { Payment } = require('../models/Payment');
-        const teamPayments = await Payment.findAll({
-          where: { teamId: team.id }
+        const teamPayments = await Payment.find({
+          teamId: team._id
         });
 
+        const activeMembers = team.members.filter(m => m.isActive);
+
         return {
-          id: team.id,
+          id: team._id,
           name: team.name,
           totalPayments: teamPayments.length,
           totalAmount: teamPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0),
-          memberCount: await TeamMember.count({ where: { teamId: team.id, isActive: true } })
+          memberCount: activeMembers.length
         };
       })
     );
@@ -59,32 +56,30 @@ router.get('/teams', async (req, res) => {
 router.get('/overview', async (req, res) => {
   try {
     const userId = req.user.id;
-    const { Payment } = require('../models/Payment');
-    const { TeamMember } = require('../models/Team');
 
-    const totalPayments = await Payment.count({ 
-      where: { payerWallet: req.user.walletAddress } 
+    const totalPayments = await Payment.countDocuments({ 
+      payerWallet: req.user.walletAddress 
     });
     
-    const totalAmount = await Payment.sum('amount', { 
-      where: { payerWallet: req.user.walletAddress, status: 'completed' } 
+    const completedPayments = await Payment.find({
+      payerWallet: req.user.walletAddress,
+      status: 'completed'
     });
 
-    const teamCount = await TeamMember.count({ 
-      where: { userId, isActive: true } 
-    });
+    const totalAmount = completedPayments.reduce((sum, p) => sum + p.amount, 0);
 
-    const completedPayments = await Payment.count({
-      where: { payerWallet: req.user.walletAddress, status: 'completed' }
+    const userTeams = await Team.find({
+      'members.userId': userId,
+      'members.isActive': true
     });
 
     const overview = {
       totalPayments,
       totalAmount: totalAmount || 0,
-      teamCount,
+      teamCount: userTeams.length,
       successRate: totalPayments > 0 ? 
-        (completedPayments / totalPayments * 100).toFixed(2) : 0,
-      activeTeams: teamCount
+        (completedPayments.length / totalPayments * 100).toFixed(2) : 0,
+      activeTeams: userTeams.length
     };
 
     ResponseHandler.success(res, overview, 'Overview analytics retrieved successfully');
@@ -95,25 +90,36 @@ router.get('/overview', async (req, res) => {
 
 router.get('/monthly-stats', async (req, res) => {
   try {
-    const { Payment } = require('../models/Payment');
     const userId = req.user.walletAddress;
+    const currentYear = new Date(new Date().getFullYear(), 0, 1);
 
-    const monthlyStats = await Payment.findAll({
-      attributes: [
-        [require('sequelize').fn('DATE_TRUNC', 'month', require('sequelize').col('createdAt')), 'month'],
-        [require('sequelize').fn('COUNT', require('sequelize').col('id')), 'paymentCount'],
-        [require('sequelize').fn('SUM', require('sequelize').col('amount')), 'totalAmount']
-      ],
-      where: {
-        payerWallet: userId,
-        status: 'completed',
-        createdAt: {
-          [Op.gte]: new Date(new Date().getFullYear(), 0, 1) // Current year
+    const monthlyStats = await Payment.aggregate([
+      {
+        $match: {
+          payerWallet: userId,
+          status: 'completed',
+          createdAt: { $gte: currentYear }
         }
       },
-      group: [require('sequelize').fn('DATE_TRUNC', 'month', require('sequelize').col('createdAt'))],
-      order: [[require('sequelize').fn('DATE_TRUNC', 'month', require('sequelize').col('createdAt')), 'ASC']]
-    });
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+          paymentCount: { $sum: 1 },
+          totalAmount: { $sum: '$amount' }
+        }
+      },
+      {
+        $sort: { _id: 1 }
+      },
+      {
+        $project: {
+          month: '$_id',
+          paymentCount: 1,
+          totalAmount: 1,
+          _id: 0
+        }
+      }
+    ]);
 
     ResponseHandler.success(res, monthlyStats, 'Monthly stats retrieved successfully');
   } catch (error) {

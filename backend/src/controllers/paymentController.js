@@ -9,15 +9,14 @@ class PaymentController {
   async listPayments(req, res) {
     try {
       const { status, limit = 20, offset = 0, sort = 'createdAt', order = 'DESC' } = req.query;
-      const where = { payerWallet: req.user.walletAddress };
-      if (status) where.status = status;
+      const query = { payerWallet: req.user.walletAddress };
+      if (status) query.status = status;
 
-      const payments = await Payment.findAll({
-        where,
-        limit: Math.min(parseInt(limit), 100),
-        offset: parseInt(offset),
-        order: [[sort, order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC']]
-      });
+      const sortOrder = order.toUpperCase() === 'ASC' ? 1 : -1;
+      const payments = await Payment.find(query)
+        .sort({ [sort]: sortOrder })
+        .limit(Math.min(parseInt(limit), 100))
+        .skip(parseInt(offset));
 
       return res.json({ success: true, payments });
     } catch (error) {
@@ -39,22 +38,22 @@ class PaymentController {
       }
 
       // Create payment record
-      const payment = await Payment.create({
+      const payment = new Payment({
         amount: amounts.reduce((sum, amount) => sum + parseFloat(amount), 0),
         recipientWallet: recipients[0], // For now, single recipient
         payerWallet,
         description,
         status: 'pending'
       });
+      await payment.save();
 
       // Execute on blockchain
       const blockchainResult = await blockchainService.executePayment(recipients, amounts);
       
       if (blockchainResult.success) {
-        await payment.update({
-          status: 'completed',
-          transactionHash: blockchainResult.transactionHash
-        });
+        payment.status = 'completed';
+        payment.transactionHash = blockchainResult.transactionHash;
+        await payment.save();
 
         // Emit real-time update
         req.app.get('socketio').emit('payment_completed', {
@@ -68,7 +67,8 @@ class PaymentController {
           transactionHash: blockchainResult.transactionHash
         });
       } else {
-        await payment.update({ status: 'failed' });
+        payment.status = 'failed';
+        await payment.save();
         return res.status(500).json({
           success: false,
           error: 'Blockchain transaction failed'
@@ -83,7 +83,7 @@ class PaymentController {
   async getPaymentStatus(req, res) {
     try {
       const { paymentId } = req.params;
-      const payment = await Payment.findByPk(paymentId);
+      const payment = await Payment.findById(paymentId);
       
       if (!payment) {
         return res.status(404).json({ success: false, error: 'Payment not found' });
@@ -132,9 +132,9 @@ class PaymentController {
         // Try to resolve by email or name
         let user = null;
         if (typeof r === 'string') {
-          user = await User.findOne({ where: { email: r } });
+          user = await User.findOne({ email: r });
           if (!user) {
-            user = await User.findOne({ where: { name: r } });
+            user = await User.findOne({ name: r });
           }
         } else if (r && typeof r === 'object') {
           const { email, name, wallet } = r;
@@ -143,10 +143,10 @@ class PaymentController {
             continue;
           }
           if (email) {
-            user = await User.findOne({ where: { email } });
+            user = await User.findOne({ email });
           }
           if (!user && name) {
-            user = await User.findOne({ where: { name } });
+            user = await User.findOne({ name });
           }
         }
 
@@ -213,6 +213,92 @@ class PaymentController {
       res.json({ success: true, analytics });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  async executePayment(req, res) {
+    try {
+      const { paymentId } = req.params;
+      const payerWallet = req.user.walletAddress;
+
+      const payment = await Payment.findById(paymentId);
+      if (!payment) {
+        return res.status(404).json({ success: false, error: 'Payment not found' });
+      }
+
+      if (payment.payerWallet !== payerWallet) {
+        return res.status(403).json({ success: false, error: 'Not authorized to execute this payment' });
+      }
+
+      if (payment.status === 'completed') {
+        return res.status(400).json({ success: false, error: 'Payment already completed' });
+      }
+      if (payment.status === 'cancelled') {
+        return res.status(400).json({ success: false, error: 'Payment has been cancelled' });
+      }
+
+      await payment.markAsProcessing();
+
+      const recipients = [payment.recipientWallet];
+      const amounts = [parseFloat(payment.amount)];
+
+      const result = await blockchainService.executePayment(recipients, amounts);
+
+      if (result.success) {
+        await payment.markAsCompleted(result.transactionHash);
+
+        req.app.get('socketio').emit('payment_completed', {
+          paymentId: payment.id,
+          transactionHash: result.transactionHash
+        });
+
+        return res.json({
+          success: true,
+          paymentId: payment.id,
+          transactionHash: result.transactionHash
+        });
+      } else {
+        await payment.markAsFailed(result.error || 'Blockchain transaction failed');
+        return res.status(500).json({ success: false, error: result.error || 'Blockchain transaction failed' });
+      }
+    } catch (error) {
+      console.error('Execute payment error:', error);
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  async cancelPayment(req, res) {
+    try {
+      const { paymentId } = req.params;
+      const payerWallet = req.user.walletAddress;
+
+      const payment = await Payment.findById(paymentId);
+      if (!payment) {
+        return res.status(404).json({ success: false, error: 'Payment not found' });
+      }
+
+      if (payment.payerWallet !== payerWallet) {
+        return res.status(403).json({ success: false, error: 'Not authorized to cancel this payment' });
+      }
+
+      if (payment.status === 'completed') {
+        return res.status(400).json({ success: false, error: 'Cannot cancel a completed payment' });
+      }
+      if (payment.status === 'cancelled') {
+        return res.json({ success: true, payment });
+      }
+
+      payment.status = 'cancelled';
+      await payment.save();
+
+      req.app.get('socketio').emit('payment_cancelled', {
+        paymentId: payment.id
+      });
+
+      return res.json({ success: true, payment });
+    } catch (error) {
+      console.error('Cancel payment error:', error);
+      return res.status(500).json({ success: false, error: error.message });
     }
   }
 }

@@ -53,8 +53,7 @@ SwiftSplit solves these problems with AI-powered payment automation on Arc block
 | **Stablecoin** | USDC | Payment token and gas currency |
 | **Wallets** | Circle Wallet / Thirdweb | User onboarding, identity verification, gasless txns |
 | **Backend** | Node.js + Express | Orchestrates AI, databases, smart contracts |
-| **Structured DB** | PostgreSQL | Users, payments, teams, audit logs (ACID compliant) |
-| **Unstructured DB** | MongoDB | AI logs, invoice parsing, chat messages |
+| **Database** | MongoDB | All application data (users, payments, AI logs, teams, etc.) |
 | **AI Layer** | LangChain / OpenAI / ElevenLabs | Invoice/chat/voice parsing + intent detection |
 | **File Storage** | IPFS | Decentralized invoice and attachment storage |
 | **Frontend** | React + Tailwind | Dashboard, payment interface, notifications |
@@ -65,13 +64,13 @@ SwiftSplit solves these problems with AI-powered payment automation on Arc block
 ```
 1. User Input (Invoice/Chat/Voice)
    ↓
-2. AI Parsing & Validation (MongoDB logs)
+2. AI Parsing & Validation (logged to MongoDB)
    ↓
-3. Backend Verification (PostgreSQL checks)
+3. Backend Verification (MongoDB user & payment checks)
    ↓
 4. Smart Contract Execution (Arc blockchain)
    ↓
-5. Event Emission → Database Updates
+5. Event Emission → MongoDB Updates
    ↓
 6. Real-time Notifications (Socket.io)
 ```
@@ -82,9 +81,9 @@ SwiftSplit solves these problems with AI-powered payment automation on Arc block
 
 ### Prerequisites
 - Node.js >= 18.0
-- PostgreSQL >= 14
-- MongoDB >= 6.0
+- MongoDB >= 6.0 (or MongoDB Atlas account)
 - Arc Testnet Wallet with USDC
+- Docker & Docker Compose (optional, for local MongoDB)
 
 ### Installation
 
@@ -173,7 +172,7 @@ swiftsplit/
 │   ├── src/
 │   │   ├── controllers/   # Request handlers
 │   │   ├── services/      # Business logic
-│   │   ├── models/        # Database models (PostgreSQL + MongoDB)
+│   │   ├── models/        # MongoDB models (Mongoose schemas)
 │   │   ├── routes/        # API endpoints
 │   │   ├── middleware/    # Auth, validation, error handling
 │   │   └── config/        # Database and app configuration
@@ -248,9 +247,10 @@ npm run verify:mainnet
 ## 🔑 Environment Variables
 
 See `.env.example` files in each module for required configuration:
-- **Backend**: Database credentials, Arc RPC URL, Circle API keys, OpenAI API key
+- **Backend**: MongoDB URI, Arc RPC URL, Circle API keys, OpenAI API key, ElevenLabs API key
 - **Contracts**: Arc wallet private key, RPC URLs, contract addresses
 - **AI Modules**: OpenAI API key, ElevenLabs API key (optional)
+- **Frontend**: API base URL, Arc RPC URL
 
 ---
 

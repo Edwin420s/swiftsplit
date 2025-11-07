@@ -10,18 +10,19 @@ class AuthController {
       const { email, password, name, role = 'freelancer' } = req.body;
 
       // Check if user already exists
-      const existingUser = await User.findOne({ where: { email } });
+      const existingUser = await User.findOne({ email });
       if (existingUser) {
         return ResponseHandler.error(res, 'User already exists', 409);
       }
 
       // Create user
-      const user = await User.create({
+      const user = new User({
         email,
         password,
         name,
         role
       });
+      await user.save();
 
       // Create wallet for user
       const walletResult = await walletService.createUserWallet(user.id, {
@@ -31,14 +32,13 @@ class AuthController {
 
       if (!walletResult.success) {
         // Delete user if wallet creation fails
-        await User.destroy({ where: { id: user.id } });
+        await User.findByIdAndDelete(user._id);
         return ResponseHandler.error(res, 'Failed to create wallet', 500);
       }
 
       // Update user with wallet address
-      await user.update({
-        walletAddress: walletResult.walletAddress
-      });
+      user.walletAddress = walletResult.walletAddress;
+      await user.save();
 
       // Generate JWT token
       const token = jwt.sign(
@@ -72,7 +72,7 @@ class AuthController {
       const { email, password } = req.body;
 
       // Find user
-      const user = await User.findOne({ where: { email } });
+      const user = await User.findOne({ email });
       if (!user) {
         return ResponseHandler.unauthorized(res, 'Invalid credentials');
       }
@@ -112,9 +112,7 @@ class AuthController {
 
   async getProfile(req, res) {
     try {
-      const user = await User.findByPk(req.user.id, {
-        attributes: { exclude: ['password'] }
-      });
+      const user = await User.findById(req.user.id).select('-password');
 
       if (!user) {
         return ResponseHandler.notFound(res, 'User not found');
@@ -141,16 +139,15 @@ class AuthController {
       const { name } = req.body;
       const userId = req.user.id;
 
-      const user = await User.findByPk(userId);
+      const user = await User.findById(userId);
       if (!user) {
         return ResponseHandler.notFound(res, 'User not found');
       }
 
-      await user.update({ name });
+      user.name = name;
+      await user.save();
 
-      const updatedUser = await User.findByPk(userId, {
-        attributes: { exclude: ['password'] }
-      });
+      const updatedUser = await User.findById(userId).select('-password');
 
       ResponseHandler.success(res, updatedUser, 'Profile updated successfully');
 

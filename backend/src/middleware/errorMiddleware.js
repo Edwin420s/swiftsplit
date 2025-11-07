@@ -3,20 +3,25 @@ const ResponseHandler = require('../utils/responseHandler');
 const errorMiddleware = (error, req, res, next) => {
   console.error('Error:', error);
 
-  // Database errors
-  if (error.name === 'SequelizeValidationError') {
-    const errors = error.errors.map(err => ({
+  // MongoDB/Mongoose errors
+  if (error.name === 'ValidationError') {
+    const errors = Object.values(error.errors).map(err => ({
       field: err.path,
       message: err.message
     }));
     return ResponseHandler.validationError(res, errors);
   }
 
-  if (error.name === 'SequelizeUniqueConstraintError') {
+  if (error.code === 11000) {
+    // MongoDB duplicate key error
     return ResponseHandler.error(res, 'Resource already exists', 409);
   }
 
-  if (error.name === 'SequelizeDatabaseError') {
+  if (error.name === 'CastError') {
+    return ResponseHandler.error(res, 'Invalid ID format', 400);
+  }
+
+  if (error.name === 'MongoError') {
     return ResponseHandler.error(res, 'Database error occurred', 500);
   }
 
