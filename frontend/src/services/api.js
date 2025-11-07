@@ -4,11 +4,15 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
 // Axios-like fetch wrapper
 const request = async (url, options = {}) => {
   try {
+    const isFormData = options.body instanceof FormData
+    const token = typeof window !== 'undefined' ? window.localStorage.getItem('token') : null
+    const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
+    const headers = isFormData
+      ? { ...authHeader, ...(options.headers || {}) }
+      : { 'Content-Type': 'application/json', ...authHeader, ...(options.headers || {}) }
+
     const response = await fetch(`${API_BASE_URL}${url}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-      },
+      headers,
       ...options
     })
 
@@ -123,7 +127,7 @@ export const api = {
     },
 
     create: async (userData) => {
-      return await request('/wallets', {
+      return await request('/wallets/create', {
         method: 'POST',
         body: JSON.stringify(userData)
       })

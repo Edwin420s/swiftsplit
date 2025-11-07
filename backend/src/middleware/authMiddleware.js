@@ -1,25 +1,26 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const ResponseHandler = require('../utils/responseHandler');
 
 const authMiddleware = async (req, res, next) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
     if (!token) {
-      return res.status(401).json({ error: 'No token provided' });
+      return ResponseHandler.unauthorized(res, 'No token provided');
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findByPk(decoded.userId);
     
     if (!user) {
-      return res.status(401).json({ error: 'Invalid token' });
+      return ResponseHandler.unauthorized(res, 'Invalid token');
     }
 
     req.user = user;
     next();
   } catch (error) {
-    res.status(401).json({ error: 'Token verification failed' });
+    return ResponseHandler.unauthorized(res, 'Token verification failed');
   }
 };
 

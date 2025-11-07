@@ -3,8 +3,28 @@ const User = require('../models/User');
 const blockchainService = require('../services/blockchainService');
 const aiService = require('../services/aiService');
 const paymentService = require('../services/paymentService');
+const Helpers = require('../utils/helpers');
 
 class PaymentController {
+  async listPayments(req, res) {
+    try {
+      const { status, limit = 20, offset = 0, sort = 'createdAt', order = 'DESC' } = req.query;
+      const where = { payerWallet: req.user.walletAddress };
+      if (status) where.status = status;
+
+      const payments = await Payment.findAll({
+        where,
+        limit: Math.min(parseInt(limit), 100),
+        offset: parseInt(offset),
+        order: [[sort, order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC']]
+      });
+
+      return res.json({ success: true, payments });
+    } catch (error) {
+      console.error('Payments list error:', error);
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  }
   async createPayment(req, res) {
     try {
       const { recipients, amounts, description, aiLogId } = req.body;
@@ -100,11 +120,50 @@ class PaymentController {
         });
       }
 
-      // Create payment from parsed data
+      // Resolve recipients to wallet addresses
+      const resolvedRecipients = [];
+      for (const r of parsedData.recipients || []) {
+        // If already an address, keep it
+        if (typeof r === 'string' && Helpers.validateEthereumAddress(r)) {
+          resolvedRecipients.push(r);
+          continue;
+        }
+
+        // Try to resolve by email or name
+        let user = null;
+        if (typeof r === 'string') {
+          user = await User.findOne({ where: { email: r } });
+          if (!user) {
+            user = await User.findOne({ where: { name: r } });
+          }
+        } else if (r && typeof r === 'object') {
+          const { email, name, wallet } = r;
+          if (wallet && Helpers.validateEthereumAddress(wallet)) {
+            resolvedRecipients.push(wallet);
+            continue;
+          }
+          if (email) {
+            user = await User.findOne({ where: { email } });
+          }
+          if (!user && name) {
+            user = await User.findOne({ where: { name } });
+          }
+        }
+
+        if (user && user.walletAddress && Helpers.validateEthereumAddress(user.walletAddress)) {
+          resolvedRecipients.push(user.walletAddress);
+        }
+      }
+
+      if (!resolvedRecipients.length) {
+        return res.status(400).json({ success: false, error: 'Could not resolve any recipient wallet addresses' });
+      }
+
+      // Create payment from parsed data with resolved recipients
       return this.createPayment({
         ...req,
         body: {
-          recipients: parsedData.recipients,
+          recipients: resolvedRecipients,
           amounts: parsedData.amounts,
           description: parsedData.purpose,
           aiLogId: parsedData.logId

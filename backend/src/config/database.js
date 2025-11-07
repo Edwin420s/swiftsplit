@@ -19,6 +19,12 @@ const sequelize = new Sequelize(
   }
 );
 
+const syncPostgreSQL = async () => {
+  if (process.env.DB_SYNC === 'true') {
+    await sequelize.sync({ alter: process.env.DB_SYNC_ALTER === 'true' });
+  }
+};
+
 const connectPostgreSQL = async () => {
   try {
     await sequelize.authenticate();
@@ -45,5 +51,6 @@ const connectMongoDB = async () => {
 module.exports = {
   sequelize,
   connectPostgreSQL,
-  connectMongoDB
+  connectMongoDB,
+  syncPostgreSQL
 };

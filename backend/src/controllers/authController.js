@@ -15,13 +15,10 @@ class AuthController {
         return ResponseHandler.error(res, 'User already exists', 409);
       }
 
-      // Hash password
-      const hashedPassword = await bcrypt.hash(password, 12);
-
       // Create user
       const user = await User.create({
         email,
-        password: hashedPassword,
+        password,
         name,
         role
       });

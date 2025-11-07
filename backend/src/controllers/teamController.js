@@ -134,6 +134,99 @@ class TeamController {
         throw new Error('Invalid split type');
     }
   }
+
+  async getTeam(req, res) {
+    try {
+      const { teamId } = req.params;
+      const team = await Team.findByPk(teamId, {
+        include: [{
+          model: TeamMember,
+          include: [User]
+        }]
+      });
+      if (!team) {
+        return res.status(404).json({ success: false, error: 'Team not found' });
+      }
+      return res.json({ success: true, team });
+    } catch (error) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  async getUserTeams(req, res) {
+    try {
+      const teams = await Team.findAll({
+        where: { createdBy: req.user.id },
+        include: [{ model: TeamMember, include: [User] }]
+      });
+      return res.json({ success: true, teams });
+    } catch (error) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  async updateTeam(req, res) {
+    try {
+      const { teamId } = req.params;
+      const { name, description, defaultSplitType, members } = req.body;
+
+      const team = await Team.findByPk(teamId);
+      if (!team) {
+        return res.status(404).json({ success: false, error: 'Team not found' });
+      }
+      if (team.createdBy !== req.user.id) {
+        return res.status(403).json({ success: false, error: 'Not authorized to update team' });
+      }
+
+      await team.update({
+        name: name ?? team.name,
+        description: description ?? team.description,
+        defaultSplitType: defaultSplitType ?? team.defaultSplitType
+      });
+
+      if (Array.isArray(members)) {
+        await TeamMember.destroy({ where: { teamId: team.id } });
+        const teamMembers = members.map(m => ({
+          teamId: team.id,
+          userId: m.userId,
+          splitPercentage: m.splitPercentage || 0,
+          fixedAmount: m.fixedAmount || 0,
+          isActive: m.isActive !== false
+        }));
+        if (teamMembers.length) {
+          await TeamMember.bulkCreate(teamMembers);
+        }
+      }
+
+      const updated = await Team.findByPk(team.id, {
+        include: [{ model: TeamMember, include: [User] }]
+      });
+
+      return res.json({ success: true, team: updated });
+    } catch (error) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  async deleteTeam(req, res) {
+    try {
+      const { teamId } = req.params;
+      const team = await Team.findByPk(teamId);
+      if (!team) {
+        return res.status(404).json({ success: false, error: 'Team not found' });
+      }
+      if (team.createdBy !== req.user.id) {
+        return res.status(403).json({ success: false, error: 'Not authorized to delete team' });
+      }
+
+      await TeamMember.destroy({ where: { teamId } });
+      await Team.destroy({ where: { id: teamId } });
+
+      return res.json({ success: true });
+    } catch (error) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  }
 }
 
 module.exports = new TeamController();

@@ -5,7 +5,21 @@ const aiService = require('../services/aiService');
 const authMiddleware = require('../middleware/authMiddleware');
 
 const router = express.Router();
-const upload = multer({ dest: 'uploads/voice/' });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+
+// Alias for compatibility: POST /voice/process
+router.post('/process', authMiddleware, upload.single('audio'), async (req, res) => {
+  try {
+    const transcription = await voiceService.transcribeVoice(req.file.buffer);
+    if (transcription.success) {
+      const parsed = await aiService.parseChatMessage(transcription.transcription);
+      return res.json({ success: true, transcription: transcription.transcription, parsedPayment: parsed.data });
+    }
+    return res.status(400).json(transcription);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 router.use(authMiddleware);
 

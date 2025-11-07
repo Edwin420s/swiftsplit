@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const AILogSchema = new mongoose.Schema({
   userId: {
     type: String,
-    required: true
+    required: false
   },
   inputType: {
     type: String,

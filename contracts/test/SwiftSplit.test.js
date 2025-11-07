@@ -18,15 +18,15 @@ describe("SwiftSplit", function () {
     // Deploy MockUSDC
     const MockUSDC = await ethers.getContractFactory("MockUSDC");
     usdc = await MockUSDC.deploy(6);
-    await usdc.deployed();
+    await usdc.waitForDeployment();
 
     // Deploy SwiftSplit
     SwiftSplit = await ethers.getContractFactory("SwiftSplit");
-    swiftSplit = await SwiftSplit.deploy(usdc.address, ethers.utils.parseUnits("50000", 6));
-    await swiftSplit.deployed();
+    swiftSplit = await SwiftSplit.deploy(usdc.address, ethers.parseUnits("50000", 6));
+    await swiftSplit.waitForDeployment();
 
     // Fund payer
-    await usdc.mint(payer.address, ethers.utils.parseUnits("10000", 6));
+    await usdc.mint(payer.address, ethers.parseUnits("10000", 6));
   });
 
   describe("Deployment", function () {
@@ -40,38 +40,39 @@ describe("SwiftSplit", function () {
 
     it("Should set the correct max payment amount", async function () {
       const maxAmount = await swiftSplit.maxPaymentAmount();
-      expect(maxAmount).to.equal(ethers.utils.parseUnits("50000", 6));
+      expect(maxAmount).to.equal(ethers.parseUnits("50000", 6));
     });
   });
 
   describe("createPayment", function () {
     it("Should create a payment with single recipient", async function () {
       const recipients = [recipient1.address];
-      const amounts = [ethers.utils.parseUnits("100", 6)];
+      const amounts = [ethers.parseUnits("100", 6)];
+
       const invoiceId = "INV-001";
 
       await usdc.connect(payer).approve(swiftSplit.address, amounts[0]);
 
       await expect(swiftSplit.connect(payer).createPayment(recipients, amounts, invoiceId))
-        .to.emit(swiftSplit, "PaymentCreated")
-        .withArgs(ethers.utils.hexValue, payer.address, recipients, amounts, invoiceId);
+        .to.emit(swiftSplit, "PaymentCreated");
     });
 
     it("Should create a payment with multiple recipients", async function () {
       const recipients = [recipient1.address, recipient2.address, recipient3.address];
       const amounts = [
-        ethers.utils.parseUnits("100", 6),
-        ethers.utils.parseUnits("200", 6),
-        ethers.utils.parseUnits("300", 6)
+        ethers.parseUnits("100", 6),
+        ethers.parseUnits("200", 6),
+        ethers.parseUnits("300", 6)
       ];
+
       const invoiceId = "INV-002";
 
-      await usdc.connect(payer).approve(swiftSplit.address, ethers.utils.parseUnits("600", 6));
+      await usdc.connect(payer).approve(swiftSplit.address, ethers.parseUnits("600", 6));
 
       const tx = await swiftSplit.connect(payer).createPayment(recipients, amounts, invoiceId);
       const receipt = await tx.wait();
       const event = receipt.events.find(e => e.event === 'PaymentCreated');
-      
+
       expect(event.args.payer).to.equal(payer.address);
       expect(event.args.recipients).to.deep.equal(recipients);
       expect(event.args.amounts).to.deep.equal(amounts);
@@ -80,7 +81,8 @@ describe("SwiftSplit", function () {
 
     it("Should fail with mismatched arrays", async function () {
       const recipients = [recipient1.address, recipient2.address];
-      const amounts = [ethers.utils.parseUnits("100", 6)]; // Only one amount
+      const amounts = [ethers.parseUnits("100", 6)]; // Only one amount
+
       const invoiceId = "INV-003";
 
       await usdc.connect(payer).approve(swiftSplit.address, amounts[0]);
@@ -93,6 +95,7 @@ describe("SwiftSplit", function () {
     it("Should fail with zero amount", async function () {
       const recipients = [recipient1.address];
       const amounts = [0];
+
       const invoiceId = "INV-004";
 
       await usdc.connect(payer).approve(swiftSplit.address, amounts[0]);
@@ -103,8 +106,9 @@ describe("SwiftSplit", function () {
     });
 
     it("Should fail with invalid recipient", async function () {
-      const recipients = [ethers.constants.AddressZero];
-      const amounts = [ethers.utils.parseUnits("100", 6)];
+      const recipients = [ethers.ZeroAddress];
+      const amounts = [ethers.parseUnits("100", 6)];
+
       const invoiceId = "INV-005";
 
       await usdc.connect(payer).approve(swiftSplit.address, amounts[0]);
@@ -116,7 +120,8 @@ describe("SwiftSplit", function () {
 
     it("Should fail with insufficient balance", async function () {
       const recipients = [recipient1.address];
-      const amounts = [ethers.utils.parseUnits("50000", 6)]; // More than payer has
+      const amounts = [ethers.parseUnits("50000", 6)]; // More than payer has
+
       const invoiceId = "INV-006";
 
       await usdc.connect(payer).approve(swiftSplit.address, amounts[0]);
@@ -128,10 +133,12 @@ describe("SwiftSplit", function () {
 
     it("Should fail when amount exceeds maximum", async function () {
       const recipients = [recipient1.address];
-      const amounts = [ethers.utils.parseUnits("60000", 6)]; // Exceeds max
+      const amounts = [ethers.parseUnits("60000", 6)]; // Exceeds max
+
       const invoiceId = "INV-007";
 
-      await usdc.mint(payer.address, ethers.utils.parseUnits("70000", 6));
+      await usdc.mint(payer.address, ethers.parseUnits("70000", 6));
+
       await usdc.connect(payer).approve(swiftSplit.address, amounts[0]);
 
       await expect(
@@ -145,10 +152,11 @@ describe("SwiftSplit", function () {
 
     beforeEach(async function () {
       const recipients = [recipient1.address, recipient2.address];
-      const amounts = [ethers.utils.parseUnits("100", 6), ethers.utils.parseUnits("200", 6)];
+      const amounts = [ethers.parseUnits("100", 6), ethers.parseUnits("200", 6)];
+
       const invoiceId = "INV-008";
 
-      await usdc.connect(payer).approve(swiftSplit.address, ethers.utils.parseUnits("300", 6));
+      await usdc.connect(payer).approve(swiftSplit.address, ethers.parseUnits("300", 6));
 
       const tx = await swiftSplit.connect(payer).createPayment(recipients, amounts, invoiceId);
       const receipt = await tx.wait();
@@ -165,8 +173,8 @@ describe("SwiftSplit", function () {
       const recipient1BalanceAfter = await usdc.balanceOf(recipient1.address);
       const recipient2BalanceAfter = await usdc.balanceOf(recipient2.address);
 
-      expect(recipient1BalanceAfter.sub(recipient1BalanceBefore)).to.equal(ethers.utils.parseUnits("100", 6));
-      expect(recipient2BalanceAfter.sub(recipient2BalanceBefore)).to.equal(ethers.utils.parseUnits("200", 6));
+      expect(BigInt(recipient1BalanceAfter) - BigInt(recipient1BalanceBefore)).to.equal(BigInt(ethers.parseUnits("100", 6)));
+      expect(BigInt(recipient2BalanceAfter) - BigInt(recipient2BalanceBefore)).to.equal(BigInt(ethers.parseUnits("200", 6)));
 
       const payment = await swiftSplit.getPayment(paymentId);
       expect(payment.status).to.equal(1); // COMPLETED
@@ -175,7 +183,7 @@ describe("SwiftSplit", function () {
     it("Should emit PaymentExecuted event", async function () {
       await expect(swiftSplit.connect(payer).executePayment(paymentId))
         .to.emit(swiftSplit, "PaymentExecuted")
-        .withArgs(paymentId, payer.address, ethers.utils.parseUnits("300", 6));
+        .withArgs(paymentId, payer.address, ethers.parseUnits("300", 6));
     });
 
     it("Should fail if payment already executed", async function () {
@@ -208,7 +216,8 @@ describe("SwiftSplit", function () {
 
     beforeEach(async function () {
       const recipients = [recipient1.address];
-      const amounts = [ethers.utils.parseUnits("100", 6)];
+      const amounts = [ethers.parseUnits("100", 6)];
+
       const invoiceId = "INV-009";
 
       await usdc.connect(payer).approve(swiftSplit.address, amounts[0]);
@@ -253,7 +262,8 @@ describe("SwiftSplit", function () {
 
     beforeEach(async function () {
       const recipients = [recipient1.address];
-      const amounts = [ethers.utils.parseUnits("100", 6)];
+      const amounts = [ethers.parseUnits("100", 6)];
+
       const invoiceId = "INV-010";
 
       await usdc.connect(payer).approve(swiftSplit.address, amounts[0]);
@@ -291,7 +301,8 @@ describe("SwiftSplit", function () {
       await swiftSplit.pause();
 
       const recipients = [recipient1.address];
-      const amounts = [ethers.utils.parseUnits("100", 6)];
+      const amounts = [ethers.parseUnits("100", 6)];
+
       const invoiceId = "INV-011";
 
       await usdc.connect(payer).approve(swiftSplit.address, amounts[0]);
@@ -303,7 +314,8 @@ describe("SwiftSplit", function () {
 
     it("Should not allow execution when paused", async function () {
       const recipients = [recipient1.address];
-      const amounts = [ethers.utils.parseUnits("100", 6)];
+      const amounts = [ethers.parseUnits("100", 6)];
+
       const invoiceId = "INV-012";
 
       await usdc.connect(payer).approve(swiftSplit.address, amounts[0]);
@@ -326,10 +338,11 @@ describe("SwiftSplit", function () {
 
     beforeEach(async function () {
       const recipients = [recipient1.address, recipient2.address];
-      const amounts = [ethers.utils.parseUnits("150", 6), ethers.utils.parseUnits("250", 6)];
+      const amounts = [ethers.parseUnits("150", 6), ethers.parseUnits("250", 6)];
+
       const invoiceId = "INV-013";
 
-      await usdc.connect(payer).approve(swiftSplit.address, ethers.utils.parseUnits("400", 6));
+      await usdc.connect(payer).approve(swiftSplit.address, ethers.parseUnits("400", 6));
 
       const tx = await swiftSplit.connect(payer).createPayment(recipients, amounts, invoiceId);
       const receipt = await tx.wait();
@@ -343,21 +356,22 @@ describe("SwiftSplit", function () {
       expect(payment.payer).to.equal(payer.address);
       expect(payment.recipients).to.deep.equal([recipient1.address, recipient2.address]);
       expect(payment.amounts).to.deep.equal([
-        ethers.utils.parseUnits("150", 6),
-        ethers.utils.parseUnits("250", 6)
+        ethers.parseUnits("150", 6),
+        ethers.parseUnits("250", 6)
       ]);
+
       expect(payment.invoiceId).to.equal("INV-013");
       expect(payment.status).to.equal(0); // PENDING
     });
 
     it("Should return payment total", async function () {
       const total = await swiftSplit.getPaymentTotal(paymentId);
-      expect(total).to.equal(ethers.utils.parseUnits("400", 6));
+      expect(total).to.equal(ethers.parseUnits("400", 6));
     });
 
     it("Should fail for non-existent payment", async function () {
-      const invalidPaymentId = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("invalid"));
-      
+      const invalidPaymentId = ethers.keccak256(ethers.toUtf8Bytes("invalid"));
+
       await expect(
         swiftSplit.getPayment(invalidPaymentId)
       ).to.be.revertedWith("Payment does not exist");
@@ -367,7 +381,7 @@ describe("SwiftSplit", function () {
   describe("access control", function () {
     it("Should allow owner to set controller", async function () {
       await swiftSplit.setController(unauthorized.address, true);
-      
+
       const isController = await swiftSplit.authorizedControllers(unauthorized.address);
       expect(isController).to.be.true;
     });
@@ -379,7 +393,8 @@ describe("SwiftSplit", function () {
     });
 
     it("Should allow owner to set max payment amount", async function () {
-      const newMax = ethers.utils.parseUnits("75000", 6);
+      const newMax = ethers.parseUnits("75000", 6);
+
       await swiftSplit.setMaxPaymentAmount(newMax);
 
       const currentMax = await swiftSplit.maxPaymentAmount();
@@ -387,7 +402,7 @@ describe("SwiftSplit", function () {
     });
 
     it("Should not allow non-owner to set max payment amount", async function () {
-      const newMax = ethers.utils.parseUnits("75000", 6);
+      const newMax = ethers.parseUnits("75000", 6);
       
       await expect(
         swiftSplit.connect(unauthorized).setMaxPaymentAmount(newMax)

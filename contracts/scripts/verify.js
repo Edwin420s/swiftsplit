@@ -1,4 +1,4 @@
-const { run } = require("hardhat");
+const { run, ethers } = require("hardhat");
 
 async function verify(contractAddress, constructorArguments) {
   console.log(`🔍 Verifying contract at ${contractAddress}...`);
@@ -36,13 +36,13 @@ async function main() {
   // Verify SwiftSplit
   await verify(SWIFTSPLIT_ADDRESS, [
     USDC_ADDRESS,
-    ethers.utils.parseUnits("50000", 6) // maxPaymentAmount
+    ethers.parseUnits("50000", 6) // maxPaymentAmount
   ]);
 
   // Verify TeamSplitter
   await verify(TEAMSPLITTER_ADDRESS, [
     USDC_ADDRESS,
-    ethers.utils.parseUnits("50000", 6) // maxTeamPaymentAmount
+    ethers.parseUnits("50000", 6) // maxTeamPaymentAmount
   ]);
 
   console.log("🎉 All contracts verified!");
