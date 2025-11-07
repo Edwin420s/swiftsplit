@@ -2,7 +2,16 @@
 
 **Fast, simple, and intelligent cross-border payments for freelancers and teams.**
 
+> 🏆 **Built for the AI Agents on Arc with USDC Hackathon**  
+> Track: Payments for Content & Freelance Work
+
 SwiftSplit is an AI-powered payment platform built on Arc blockchain, designed to simplify cross-border freelance payments using USDC. The platform combines AI-driven invoice parsing, natural language payment commands, and automated team payment splitting to eliminate friction in global freelance transactions.
+
+### 📺 Demo & Links
+- **Live Demo**: [Coming Soon]
+- **GitHub**: https://github.com/Edwin420s/swiftsplit
+- **Documentation**: See [INTEGRATION_REPORT.md](INTEGRATION_REPORT.md) for full technical audit
+- **Video Demo**: [Coming Soon]
 
 ---
 
@@ -43,7 +52,39 @@ SwiftSplit solves these problems with AI-powered payment automation on Arc block
 
 ---
 
+## ✅ Implementation Status
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| MongoDB Database | ✅ Complete | All 7 collections implemented |
+| User Authentication | ✅ Complete | JWT-based auth with bcrypt |
+| Payment Creation | ✅ Complete | Single & multi-recipient support |
+| Team Splitting | ✅ Complete | Percentage & fixed amount splits |
+| AI Invoice Parsing | ✅ Complete | With mock fallback |
+| AI Chat Parsing | ✅ Complete | Natural language commands |
+| Voice Commands | ✅ Complete | ElevenLabs integration |
+| Smart Contracts | ✅ Complete | Deployed on Arc Testnet |
+| Blockchain Integration | ✅ Complete | ethers.js v6 with Arc RPC |
+| Real-time Notifications | ✅ Complete | Socket.io configured |
+| Frontend API Client | ✅ Complete | All endpoints integrated |
+| Circle Wallet Integration | ⚠️ Configured | Requires API keys |
+| IPFS Storage | ⚠️ Planned | Local file storage currently |
+| Production Deployment | ⚠️ Ready | MongoDB Atlas recommended |
+
+---
+
 ## 🏗️ Architecture
+
+### Database Architecture
+**SwiftSplit uses MongoDB exclusively** for all data storage:
+- ✅ User accounts and wallet addresses
+- ✅ Payment transactions and history
+- ✅ Team configurations and splits
+- ✅ AI parsing logs and confidence scores
+- ✅ Invoice data and chat messages
+- ✅ Audit logs and analytics
+
+This single-database design simplifies deployment, reduces infrastructure costs, and provides flexibility for unstructured AI data while maintaining ACID compliance through MongoDB transactions.
 
 ### Tech Stack
 
@@ -81,9 +122,14 @@ SwiftSplit solves these problems with AI-powered payment automation on Arc block
 
 ### Prerequisites
 - Node.js >= 18.0
-- MongoDB >= 6.0 (or MongoDB Atlas account)
+- MongoDB >= 6.0 **OR** MongoDB Atlas account (cloud)
 - Arc Testnet Wallet with USDC
 - Docker & Docker Compose (optional, for local MongoDB)
+
+**MongoDB Options:**
+- **Option 1 (Recommended)**: Use Docker: `docker-compose up -d mongodb`
+- **Option 2**: Install MongoDB locally
+- **Option 3**: Use MongoDB Atlas (free tier available at mongodb.com/atlas)
 
 ### Installation
 
@@ -122,36 +168,48 @@ cp frontend/.env.example frontend/.env
 # (Backend will use AI_MODULES_URL=http://localhost:3001 to reach AI services)
 ```
 
-4. **Deploy Smart Contracts**
+4. **Start MongoDB**
+
+**Option A: Using Docker (Recommended)**
+```bash
+# Start MongoDB (and optionally Redis)
+docker-compose up -d mongodb
+```
+
+**Option B: Using MongoDB Atlas**
+```bash
+# Update backend/.env with your Atlas connection string:
+# MONGODB_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/swiftsplit
+```
+
+5. **Deploy Smart Contracts**
 ```bash
 cd contracts
 npm run compile
 npm run deploy  # Deploys to Arc Testnet
 ```
 
-5. **Start Services**
+6. **Start Services**
 
 ```bash
-# Terminal 1: Start PostgreSQL and MongoDB (via Docker)
-docker-compose up -d
-
-# Terminal 2: Start Backend
+# Terminal 1: Start Backend
 cd backend
 npm run dev
 
-# Terminal 3: Start AI Modules
+# Terminal 2: Start AI Modules
 cd ai-modules
 npm run dev
 
-# Terminal 4: Start Frontend
+# Terminal 3: Start Frontend
 cd frontend
 npm run dev
 ```
 
-6. **Access the Application**
-- Frontend: http://localhost:3000
+7. **Access the Application**
+- Frontend: http://localhost:5173 (Vite dev server)
 - Backend API: http://localhost:5000
 - AI Modules: http://localhost:3001
+- MongoDB: mongodb://localhost:27017 (if using Docker)
 
 ---
 
@@ -190,7 +248,8 @@ swiftsplit/
 │   ├── voice-parser/      # Voice command processing
 │   └── shared/            # Validation and utilities
 │
-├── docker-compose.yml     # Local PostgreSQL + MongoDB setup
+├── docker-compose.yml     # Local MongoDB + Redis setup
+├── INTEGRATION_REPORT.md  # Comprehensive integration audit
 └── README.md
 ```
 
@@ -221,10 +280,19 @@ npm test
 
 ## 🌍 Deployment
 
-### Backend (Render / Vercel)
+### MongoDB (Production)
+**Use MongoDB Atlas for production:**
+1. Create a free cluster at https://mongodb.com/atlas
+2. Whitelist your server IP addresses
+3. Create a database user with readWrite permissions
+4. Get your connection string and update `MONGODB_URI` in production environment
+
+### Backend (Render / Railway / AWS)
 ```bash
 cd backend
-# Set environment variables in Render dashboard
+# Set environment variables in your hosting dashboard:
+# - MONGODB_URI (Atlas connection string)
+# - All other variables from .env.example
 git push
 ```
 
@@ -233,6 +301,14 @@ git push
 cd frontend
 npm run build
 vercel deploy
+# Set VITE_API_BASE_URL to your production backend URL
+```
+
+### AI Modules (Same host as backend or separate)
+```bash
+cd ai-modules
+# Deploy as a separate service or bundle with backend
+# Set AI_MODULES_URL in backend .env to point to this service
 ```
 
 ### Smart Contracts (Arc Mainnet)
@@ -240,6 +316,49 @@ vercel deploy
 cd contracts
 npm run deploy:mainnet
 npm run verify:mainnet
+# Update backend/.env with deployed contract addresses
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### MongoDB Connection Issues
+```bash
+# Check if MongoDB is running
+docker ps | grep mongodb
+
+# View MongoDB logs
+docker logs swiftsplit-mongodb
+
+# Restart MongoDB
+docker-compose restart mongodb
+```
+
+### Backend Won't Start
+```bash
+# Check if .env file exists
+ls backend/.env
+
+# Verify MongoDB connection string
+cat backend/.env | grep MONGODB_URI
+
+# Check backend logs
+cd backend
+npm run dev
+```
+
+### AI Modules Not Working
+- AI Modules are optional - backend has built-in fallback mock parsing
+- Check if AI Modules server is running on port 3001
+- Verify OpenAI API key in AI modules `.env`
+- Backend will log "Using mock AI parsing" if modules are unavailable
+
+### Smart Contract Deployment Fails
+```bash
+# Verify you have Arc testnet funds
+# Check your private key in contracts/.env
+# Ensure RPC URL is correct: https://sepolia.arc.gateway.fm
 ```
 
 ---
@@ -262,7 +381,21 @@ MIT License - see [LICENSE](LICENSE) for details
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+This is a hackathon project, but contributions are welcome! 
+
+**To contribute:**
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+**Priority areas:**
+- Frontend UI/UX improvements
+- Additional AI parsing models
+- Test coverage
+- Documentation improvements
+- IPFS integration for invoice storage
 
 ---
 
@@ -277,10 +410,27 @@ Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for gu
 
 ## 🙏 Acknowledgments
 
-- **Circle** for Arc blockchain and USDC infrastructure
-- **ElevenLabs** for voice AI capabilities
-- **Cloudflare** for Workers AI
+This project was built for the **AI Agents on Arc with USDC Hackathon**. Special thanks to:
+
+- **Circle** for Arc blockchain infrastructure and native USDC support
+- **OpenAI** for AI language models powering invoice and chat parsing
+- **ElevenLabs** for voice AI capabilities (optional feature)
+- **MongoDB** for flexible document database
+- **Hardhat** for Solidity development and testing
 
 ---
 
-Built with ❤️ for the global freelance economy
+## 📊 Project Status
+
+- ✅ **MongoDB-only architecture** - Simplified from hybrid design
+- ✅ **Smart contracts deployed** on Arc Testnet
+- ✅ **Backend API** fully functional with all services integrated
+- ✅ **AI Modules** operational with fallback support
+- ✅ **Frontend** configured and ready
+- ⚠️ **Production deployment** pending (ready for deployment)
+
+See [INTEGRATION_REPORT.md](INTEGRATION_REPORT.md) for comprehensive technical audit.
+
+---
+
+Built with ❤️ for the global freelance economy | **AI Agents on Arc with USDC Hackathon 2025**
