@@ -16,15 +16,15 @@ class VoiceProcessor {
     try {
       // Note: ElevenLabs primarily does TTS, but we can use their voice similarity
       // For STT, we might use a different service or ElevenLabs if they support it
-      // This is a placeholder implementation
+      // This is a temporary implementation
       
       console.log('Converting speech to text...');
       
       // In a real implementation, you would call ElevenLabs STT API here
-      // For hackathon demo, we'll simulate processing
+      // For testing purposes, we'll simulate processing
       await this.simulateProcessing();
       
-      // Mock transcription for demo purposes
+      // Mock transcription for testing purposes
       const mockTranscriptions = [
         "Pay John one hundred twenty USDC for website development",
         "Split five hundred dollars between Jane and Alex for design work",

@@ -260,7 +260,7 @@ Risk scores:
 
 ## Voice Processing Note
 
-The current voice parser uses a mock STT implementation for hackathon demo. For production:
+The current voice parser uses a mock STT implementation for demo purposes. For production:
 1. Integrate ElevenLabs Speech-to-Text API
 2. Or use Google Cloud Speech-to-Text
 3. Or use OpenAI Whisper API
