@@ -2,6 +2,7 @@ const Payment = require('../models/Payment');
 const { Team, TeamMember } = require('../models/Team');
 const blockchainService = require('./blockchainService');
 const TeamController = require('../controllers/teamController');
+const { Op } = require('sequelize');
 
 class PaymentService {
   async processTeamPayment(payerId, teamId, totalAmount, description) {

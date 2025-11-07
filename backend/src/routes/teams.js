@@ -11,5 +11,7 @@ router.post('/:teamId/members', teamController.addTeamMember);
 router.post('/:teamId/calculate-splits', teamController.calculateSplits);
 router.get('/:teamId', teamController.getTeam);
 router.get('/', teamController.getUserTeams);
+router.put('/:teamId', teamController.updateTeam);
+router.delete('/:teamId', teamController.deleteTeam);
 
 module.exports = router;

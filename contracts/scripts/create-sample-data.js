@@ -20,14 +20,14 @@ async function main() {
 
   // Fund client with USDC
   console.log("💰 Funding client account...");
-  await usdc.mint(client.address, ethers.utils.parseUnits("5000", 6));
+  await usdc.mint(client.address, ethers.parseUnits("5000", 6));
 
   // Create sample team
   console.log("👥 Creating sample team...");
   const teamTx = await teamSplitter.connect(client).createTeam(
+    "Web Development Team",
     [freelancer1.address, freelancer2.address, freelancer3.address],
-    [5000, 3000, 2000], // 50%, 30%, 20%
-    "Web Development Team"
+    [5000, 3000, 2000] // 50%, 30%, 20%
   );
   const teamReceipt = await teamTx.wait();
   const teamEvent = teamReceipt.events.find(e => e.event === 'TeamCreated');
@@ -36,14 +36,14 @@ async function main() {
 
   // Approve contracts to spend USDC
   console.log("✅ Approving contracts...");
-  await usdc.connect(client).approve(swiftSplit.address, ethers.utils.parseUnits("2000", 6));
-  await usdc.connect(client).approve(teamSplitter.address, ethers.utils.parseUnits("2000", 6));
+  await usdc.connect(client).approve(swiftSplit.address, ethers.parseUnits("2000", 6));
+  await usdc.connect(client).approve(teamSplitter.address, ethers.parseUnits("2000", 6));
 
   // Create individual payment
   console.log("💸 Creating individual payment...");
   const paymentTx = await swiftSplit.connect(client).createPayment(
     [freelancer1.address],
-    [ethers.utils.parseUnits("500", 6)],
+    [ethers.parseUnits("500", 6)],
     "INV-DEMO-001"
   );
   const paymentReceipt = await paymentTx.wait();
@@ -59,7 +59,7 @@ async function main() {
   console.log("👨‍💻 Executing team payment...");
   await teamSplitter.connect(client).executeTeamPayment(
     teamId,
-    ethers.utils.parseUnits("1500", 6),
+    ethers.parseUnits("1500", 6),
     "INV-DEMO-002"
   );
 
@@ -78,9 +78,9 @@ async function main() {
   const balance2 = await usdc.balanceOf(freelancer2.address);
   const balance3 = await usdc.balanceOf(freelancer3.address);
   
-  console.log(`Freelancer 1: ${ethers.utils.formatUnits(balance1, 6)} USDC`);
-  console.log(`Freelancer 2: ${ethers.utils.formatUnits(balance2, 6)} USDC`);
-  console.log(`Freelancer 3: ${ethers.utils.formatUnits(balance3, 6)} USDC`);
+  console.log(`Freelancer 1: ${ethers.formatUnits(balance1, 6)} USDC`);
+  console.log(`Freelancer 2: ${ethers.formatUnits(balance2, 6)} USDC`);
+  console.log(`Freelancer 3: ${ethers.formatUnits(balance3, 6)} USDC`);
 }
 
 main()

@@ -1,5 +1,6 @@
 const axios = require('axios');
 const User = require('../models/User');
+const blockchainService = require('./blockchainService');
 
 class CircleWalletService {
   constructor() {

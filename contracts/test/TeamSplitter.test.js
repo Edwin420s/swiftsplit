@@ -22,11 +22,11 @@ describe("TeamSplitter", function () {
 
     // Deploy TeamSplitter
     TeamSplitter = await ethers.getContractFactory("TeamSplitter");
-    teamSplitter = await TeamSplitter.deploy(usdc.address, ethers.utils.parseUnits("50000", 6));
+    teamSplitter = await TeamSplitter.deploy(usdc.address, ethers.parseUnits("50000", 6));
     await teamSplitter.deployed();
 
     // Fund payer
-    await usdc.mint(payer.address, ethers.utils.parseUnits("10000", 6));
+    await usdc.mint(payer.address, ethers.parseUnits("10000", 6));
   });
 
   describe("createTeam", function () {
@@ -35,7 +35,8 @@ describe("TeamSplitter", function () {
       const shares = [5000, 3000, 2000]; // 50%, 30%, 20%
       const teamName = "Development Team";
 
-      const tx = await teamSplitter.createTeam(members, shares, teamName);
+      const tx = await teamSplitter.createTeam(teamName, members, shares);
+
       const receipt = await tx.wait();
       const event = receipt.events.find(e => e.event === 'TeamCreated');
       const teamId = event.args.teamId;
@@ -56,7 +57,7 @@ describe("TeamSplitter", function () {
       const shares = [5000, 4000]; // 90% total - should fail
 
       await expect(
-        teamSplitter.createTeam(members, shares, "Invalid Team")
+        teamSplitter.createTeam("Invalid Team", members, shares)
       ).to.be.revertedWith("Total shares must equal 10000 (100%)");
     });
 
@@ -65,7 +66,7 @@ describe("TeamSplitter", function () {
       const shares = Array(21).fill(476); // ~4.76% each
 
       await expect(
-        teamSplitter.createTeam(members, shares, "Large Team")
+        teamSplitter.createTeam("Large Team", members, shares)
       ).to.be.revertedWith("Too many team members");
     });
   });
@@ -77,16 +78,17 @@ describe("TeamSplitter", function () {
       const members = [member1.address, member2.address];
       const shares = [7000, 3000]; // 70%, 30%
       
-      const tx = await teamSplitter.createTeam(members, shares, "Test Team");
+      const tx = await teamSplitter.createTeam("Test Team", members, shares);
+
       const receipt = await tx.wait();
       const event = receipt.events.find(e => e.event === 'TeamCreated');
       teamId = event.args.teamId;
 
-      await usdc.connect(payer).approve(teamSplitter.address, ethers.utils.parseUnits("10000", 6));
+      await usdc.connect(payer).approve(teamSplitter.address, ethers.parseUnits("10000", 6));
     });
 
     it("Should split payment according to shares", async function () {
-      const totalAmount = ethers.utils.parseUnits("100", 6);
+      const totalAmount = ethers.parseUnits("100", 6);
 
       const member1BalanceBefore = await usdc.balanceOf(member1.address);
       const member2BalanceBefore = await usdc.balanceOf(member2.address);
@@ -96,20 +98,20 @@ describe("TeamSplitter", function () {
       const member1BalanceAfter = await usdc.balanceOf(member1.address);
       const member2BalanceAfter = await usdc.balanceOf(member2.address);
 
-      expect(member1BalanceAfter.sub(member1BalanceBefore)).to.equal(ethers.utils.parseUnits("70", 6));
-      expect(member2BalanceAfter.sub(member2BalanceBefore)).to.equal(ethers.utils.parseUnits("30", 6));
+      expect(BigInt(member1BalanceAfter) - BigInt(member1BalanceBefore)).to.equal(BigInt(ethers.parseUnits("70", 6)));
+      expect(BigInt(member2BalanceAfter) - BigInt(member2BalanceBefore)).to.equal(BigInt(ethers.parseUnits("30", 6)));
     });
 
     it("Should fail if team is inactive", async function () {
       await teamSplitter.deactivateTeam(teamId);
 
       await expect(
-        teamSplitter.connect(payer).executeTeamPayment(teamId, ethers.utils.parseUnits("100", 6), "INV-002")
+        teamSplitter.connect(payer).executeTeamPayment(teamId, ethers.parseUnits("100", 6), "INV-002")
       ).to.be.revertedWith("Team is not active");
     });
 
     it("Should fail if amount exceeds maximum", async function () {
-      const excessAmount = ethers.utils.parseUnits("60000", 6);
+      const excessAmount = ethers.parseUnits("60000", 6);
 
       await expect(
         teamSplitter.connect(payer).executeTeamPayment(teamId, excessAmount, "INV-003")
@@ -124,7 +126,8 @@ describe("TeamSplitter", function () {
       const members = [member1.address, member2.address];
       const shares = [6000, 4000];
       
-      const tx = await teamSplitter.createTeam(members, shares, "Management Team");
+      const tx = await teamSplitter.createTeam("Management Team", members, shares);
+
       const receipt = await tx.wait();
       const event = receipt.events.find(e => e.event === 'TeamCreated');
       teamId = event.args.teamId;
@@ -170,7 +173,8 @@ describe("TeamSplitter", function () {
       const members = [member1.address, member2.address];
       const shares = [5000, 5000];
       
-      const tx = await teamSplitter.createTeam(members, shares, "Emergency Team");
+      const tx = await teamSplitter.createTeam("Emergency Team", members, shares);
+
       const receipt = await tx.wait();
       const event = receipt.events.find(e => e.event === 'TeamCreated');
       teamId = event.args.teamId;
@@ -197,7 +201,8 @@ describe("TeamSplitter", function () {
       const members = [member1.address, member2.address, member3.address];
       const shares = [4000, 3500, 2500];
       
-      const tx = await teamSplitter.createTeam(members, shares, "Getter Test Team");
+      const tx = await teamSplitter.createTeam("Getter Test Team", members, shares);
+
       const receipt = await tx.wait();
       const event = receipt.events.find(e => e.event === 'TeamCreated');
       teamId = event.args.teamId;

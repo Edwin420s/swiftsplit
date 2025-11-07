@@ -27,6 +27,17 @@ router.get('/balance', async (req, res) => {
   }
 });
 
+// Alias: GET /wallets/:address/balance
+router.get('/:address/balance', async (req, res) => {
+  try {
+    const { address } = req.params;
+    const result = await walletService.getWalletBalance(address);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.post('/transfer', async (req, res) => {
   try {
     const { toAddress, amount } = req.body;

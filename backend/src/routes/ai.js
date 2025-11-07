@@ -4,7 +4,7 @@ const aiService = require('../services/aiService');
 const authMiddleware = require('../middleware/authMiddleware');
 
 const router = express.Router();
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 router.use(authMiddleware);
 
