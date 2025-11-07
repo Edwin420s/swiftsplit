@@ -115,6 +115,12 @@ cp backend/.env.example backend/.env
 # Contracts
 cp contracts/.env.example contracts/.env
 # Add your Arc wallet private key and RPC URL
+
+# Frontend
+cp frontend/.env.example frontend/.env
+# Set VITE_API_BASE_URL=http://localhost:5000/api
+# Set VITE_ARC_RPC_URL and contract addresses after deployment
+# (Backend will use AI_MODULES_URL=http://localhost:3001 to reach AI services)
 ```
 
 4. **Deploy Smart Contracts**
@@ -146,7 +152,7 @@ npm run dev
 6. **Access the Application**
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:5000
-- AI Modules: http://localhost:8000
+- AI Modules: http://localhost:3001
 
 ---
 
@@ -248,25 +254,6 @@ See `.env.example` files in each module for required configuration:
 
 ---
 
-## 🎯 Hackathon Submission
-
-### AI Agents on Arc with USDC Hackathon
-
-**Track**: Payments for Real-World Assets + On-chain Actions
-
-**Key Innovations**:
-1. AI-driven payment intent recognition (invoices, chat, voice)
-2. Automated multi-recipient payment splitting
-3. Hybrid database architecture (PostgreSQL + MongoDB)
-4. Real-time payment notifications via Socket.io
-5. Circle Wallet integration for seamless onboarding
-
-**Demo Video**: [Link to demo]
-**Live Demo**: [Link to deployed app]
-**Presentation**: [Link to slides]
-
----
-
 ## 📜 License
 
 MIT License - see [LICENSE](LICENSE) for details
@@ -293,7 +280,6 @@ Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for gu
 - **Circle** for Arc blockchain and USDC infrastructure
 - **ElevenLabs** for voice AI capabilities
 - **Cloudflare** for Workers AI
-- **lablab.ai** for hosting the hackathon
 
 ---
 
