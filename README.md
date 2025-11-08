@@ -8,7 +8,7 @@
 SwiftSplit is an AI-powered payment platform built on Arc blockchain, designed to simplify cross-border freelance payments using USDC. The platform combines AI-driven invoice parsing, natural language payment commands, and automated team payment splitting to eliminate friction in global freelance transactions.
 
 ### 📺 Demo & Links
-- **Live Demo**: [Coming Soon]
+- **Live Demo**: https://swiftsplit.vercel.app/
 - **GitHub**: https://github.com/Edwin420s/swiftsplit
 - **Documentation**: See [INTEGRATION_REPORT.md](INTEGRATION_REPORT.md) for full technical audit
 - **Video Demo**: [Coming Soon]
