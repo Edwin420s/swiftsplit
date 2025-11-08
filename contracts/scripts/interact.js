@@ -16,7 +16,7 @@ async function main() {
   // Load contracts
   const SwiftSplit = await ethers.getContractFactory("SwiftSplit");
   const TeamSplitter = await ethers.getContractFactory("TeamSplitter");
-  const USDC = await ethers.getContractFactory("MockUSDC");
+    // USDC contract is now external, no need to deploy MockUSDC
 
   const swiftSplit = SwiftSplit.attach(SWIFTSPLIT_ADDRESS);
   const teamSplitter = TeamSplitter.attach(TEAMSPLITTER_ADDRESS);

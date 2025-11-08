@@ -14,7 +14,7 @@ class SwiftSplitMonitor {
   async initialize() {
     const SwiftSplit = await ethers.getContractFactory("SwiftSplit");
     const TeamSplitter = await ethers.getContractFactory("TeamSplitter");
-    const USDC = await ethers.getContractFactory("MockUSDC");
+    // USDC contract is now external, no need to deploy MockUSDC
 
     this.swiftSplit = SwiftSplit.attach(this.swiftSplitAddress);
     this.teamSplitter = TeamSplitter.attach(this.teamSplitterAddress);
