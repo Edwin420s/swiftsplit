@@ -57,3 +57,4 @@ ai-modules/.cache/
 ai-modules/tmp/
 
 node_modules
+.env 
