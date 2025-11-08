@@ -5,7 +5,7 @@ import PaymentCard from '../components/payment/PaymentCard'
 import Button from '../components/ui/Button'
 
 const Dashboard = () => {
-  const { walletBalance, payments, isLoading, refreshBalance } = useWallet()
+  const { walletBalance, payments, isLoading, refreshBalance, user } = useWallet()
 
   const stats = [
     {
@@ -30,11 +30,11 @@ const Dashboard = () => {
       icon: '✅'
     },
     {
-      title: 'Team Members',
-      value: '5',
-      description: 'Active collaborators',
+      title: 'Total Sent',
+      value: `${payments.reduce((sum, p) => sum + (p.amount || 0), 0).toLocaleString()} USDC`,
+      description: 'Lifetime volume',
       color: 'text-secondary',
-      icon: '👥'
+      icon: '📊'
     }
   ]
 
@@ -55,7 +55,7 @@ const Dashboard = () => {
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-bold text-secondary mb-2">
-            Welcome back, John!
+            Welcome back, {user?.name || 'User'}!
           </h1>
           <p className="text-gray-600">
             Here's your payment overview and recent activity.
@@ -159,32 +159,26 @@ const Dashboard = () => {
             </div>
           </Card>
 
-          {/* Recent Contacts */}
+          {/* Account Info */}
           <Card>
             <h3 className="text-lg font-semibold text-secondary mb-4">
-              Recent Contacts
+              Account Info
             </h3>
             <div className="space-y-3">
-              {[
-                { name: 'Jane Designer', role: 'Designer', lastPaid: '2 days ago' },
-                { name: 'Mike Developer', role: 'Developer', lastPaid: '1 week ago' },
-                { name: 'Sarah QA', role: 'Quality Assurance', lastPaid: '3 days ago' }
-              ].map((contact, index) => (
-                <div key={index} className="flex items-center justify-between p-3 hover:bg-background rounded-lg transition-colors">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-primary bg-opacity-10 rounded-full flex items-center justify-center">
-                      <span className="text-primary font-medium text-sm">
-                        {contact.name.split(' ').map(n => n[0]).join('')}
-                      </span>
-                    </div>
-                    <div>
-                      <div className="font-medium text-secondary">{contact.name}</div>
-                      <div className="text-sm text-gray-500">{contact.role}</div>
-                    </div>
-                  </div>
-                  <div className="text-sm text-gray-500">{contact.lastPaid}</div>
+              <div className="p-3 bg-background rounded-lg">
+                <div className="text-sm text-gray-500 mb-1">Email</div>
+                <div className="font-medium text-secondary">{user?.email || 'N/A'}</div>
+              </div>
+              <div className="p-3 bg-background rounded-lg">
+                <div className="text-sm text-gray-500 mb-1">Wallet Address</div>
+                <div className="font-mono text-sm text-secondary break-all">
+                  {user?.walletAddress || 'Not connected'}
                 </div>
-              ))}
+              </div>
+              <div className="p-3 bg-background rounded-lg">
+                <div className="text-sm text-gray-500 mb-1">Member Since</div>
+                <div className="font-medium text-secondary">{user?.joinedDate || 'N/A'}</div>
+              </div>
             </div>
           </Card>
         </div>

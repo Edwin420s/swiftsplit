@@ -7,6 +7,7 @@ import PaymentRequest from './pages/PaymentRequest'
 import TeamManagement from './pages/TeamManagement'
 import Analytics from './pages/Analytics'
 import Settings from './pages/Settings'
+import Landing from './pages/Landing'
 import Toast from './components/ui/Toast'
 
 // Toast Container Component
@@ -31,15 +32,14 @@ function App() {
   return (
     <WalletProvider>
       <Router>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/payments" element={<PaymentRequest />} />
-            <Route path="/team" element={<TeamManagement />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/settings" element={<Settings />} />
-          </Routes>
-        </Layout>
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
+          <Route path="/payments" element={<Layout><PaymentRequest /></Layout>} />
+          <Route path="/team" element={<Layout><TeamManagement /></Layout>} />
+          <Route path="/analytics" element={<Layout><Analytics /></Layout>} />
+          <Route path="/settings" element={<Layout><Settings /></Layout>} />
+        </Routes>
         <ToastContainer />
       </Router>
     </WalletProvider>

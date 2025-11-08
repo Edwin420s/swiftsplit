@@ -14,84 +14,52 @@ export const WalletProvider = ({ children }) => {
   const [walletBalance, setWalletBalance] = useState(0)
   const [user, setUser] = useState(null)
   const [payments, setPayments] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [toasts, setToasts] = useState([])
 
-  // Mock data for demonstration
-  useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        setIsLoading(true)
-        
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        const mockUser = {
-          id: 1,
-          name: 'John Freelancer',
-          email: 'john@example.com',
-          walletAddress: '0x742d35Cc6634C893292',
-          role: 'freelancer',
-          avatar: 'JF',
-          joinedDate: '2024-01-01'
-        }
+  const createAccount = async (formData) => {
+    try {
+      setIsLoading(true)
+      
+      // Call backend API to create account
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      })
 
-        const mockPayments = [
-          {
-            id: 1,
-            amount: 120,
-            currency: 'USDC',
-            status: 'completed',
-            recipient: 'Jane Designer',
-            recipientWallet: '0x893292Cc6634C742d35',
-            date: '2024-01-15',
-            type: 'single',
-            description: 'Website design payment',
-            transactionHash: '0xabc123def456...'
-          },
-          {
-            id: 2,
-            amount: 500,
-            currency: 'USDC',
-            status: 'pending',
-            recipients: [
-              { name: 'John Dev', amount: 300, wallet: '0x742d35Cc6634C893292' },
-              { name: 'Sarah QA', amount: 200, wallet: '0x893292Cc6634C742d35' }
-            ],
-            date: '2024-01-14',
-            type: 'split',
-            description: 'Team payment for project',
-            transactionHash: '0xdef456abc123...'
-          },
-          {
-            id: 3,
-            amount: 75,
-            currency: 'USDC',
-            status: 'completed',
-            recipient: 'Mike Copywriter',
-            recipientWallet: '0x6634C893292742d35',
-            date: '2024-01-12',
-            type: 'single',
-            description: 'Content writing',
-            transactionHash: '0x123abc456def...'
-          }
-        ]
+      const data = await response.json()
 
-        setUser(mockUser)
-        setWalletBalance(1500.75)
-        setPayments(mockPayments)
-        
-        addToast('Welcome back to SwiftSplit!', 'success')
-      } catch (error) {
-        addToast('Error loading wallet data', 'error')
-        console.error('Error loading initial data:', error)
-      } finally {
-        setIsLoading(false)
+      if (!response.ok) {
+        throw new Error(data.message || 'Account creation failed')
       }
-    }
 
-    loadInitialData()
-  }, [])
+      // Set user data from response
+      setUser({
+        id: data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+        walletAddress: data.user.walletAddress,
+        role: 'freelancer',
+        avatar: data.user.name.split(' ').map(n => n[0]).join('').toUpperCase(),
+        joinedDate: new Date().toISOString().split('T')[0]
+      })
+
+      setWalletBalance(0)
+      
+      // Store token
+      if (data.token) {
+        localStorage.setItem('authToken', data.token)
+      }
+
+      addToast('Account created successfully!', 'success')
+    } catch (error) {
+      addToast(error.message || 'Error creating account', 'error')
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const addToast = (message, type = 'info') => {
     const id = Date.now()
@@ -150,7 +118,8 @@ export const WalletProvider = ({ children }) => {
     addPayment,
     updatePaymentStatus,
     refreshBalance,
-    addToast
+    addToast,
+    createAccount
   }
 
   return (
