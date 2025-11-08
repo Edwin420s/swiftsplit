@@ -4,16 +4,22 @@ const bcrypt = require('bcryptjs');
 const UserSchema = new mongoose.Schema({
   email: {
     type: String,
-    required: true,
+    required: false,
     unique: true,
+    sparse: true,
     lowercase: true,
     trim: true,
     match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email']
   },
   password: {
     type: String,
-    required: true,
+    required: false,
     minlength: 6
+  },
+  authMethod: {
+    type: String,
+    enum: ['email', 'wallet'],
+    default: 'email'
   },
   name: {
     type: String,
@@ -29,6 +35,7 @@ const UserSchema = new mongoose.Schema({
     type: String,
     unique: true,
     sparse: true,
+    lowercase: true,
     match: /^0x[a-fA-F0-9]{40}$/
   },
   circleUserId: {
@@ -53,10 +60,21 @@ const UserSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Hash password before saving
+// Hash password before saving (only for email auth)
 UserSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
+  if (!this.isModified('password') || !this.password) return next();
   this.password = await bcrypt.hash(this.password, 12);
+  next();
+});
+
+// Validate wallet or email auth requirements
+UserSchema.pre('save', function(next) {
+  if (this.authMethod === 'wallet' && !this.walletAddress) {
+    return next(new Error('Wallet address required for wallet authentication'));
+  }
+  if (this.authMethod === 'email' && (!this.email || !this.password)) {
+    return next(new Error('Email and password required for email authentication'));
+  }
   next();
 });
 

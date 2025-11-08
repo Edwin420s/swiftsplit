@@ -1,8 +1,13 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const { ethers } = require('ethers');
+const crypto = require('crypto');
 const User = require('../models/User');
 const ResponseHandler = require('../utils/responseHandler');
 const walletService = require('../services/walletService');
+
+// Store nonces temporarily (in production, use Redis)
+const nonces = new Map();
 
 class AuthController {
   async register(req, res) {
@@ -154,6 +159,126 @@ class AuthController {
     } catch (error) {
       console.error('Profile update error:', error);
       ResponseHandler.error(res, 'Failed to update profile');
+    }
+  }
+
+  // Generate nonce for wallet signature verification
+  async getNonce(req, res) {
+    try {
+      const { address } = req.query;
+
+      if (!address || !ethers.utils.isAddress(address)) {
+        return ResponseHandler.error(res, 'Invalid wallet address', 400);
+      }
+
+      // Generate random nonce
+      const nonce = crypto.randomBytes(32).toString('hex');
+      
+      // Store nonce with 5 minute expiration
+      nonces.set(address.toLowerCase(), {
+        nonce,
+        expiresAt: Date.now() + 5 * 60 * 1000
+      });
+
+      // Clean up expired nonces
+      for (const [addr, data] of nonces.entries()) {
+        if (data.expiresAt < Date.now()) {
+          nonces.delete(addr);
+        }
+      }
+
+      ResponseHandler.success(res, { nonce }, 'Nonce generated');
+
+    } catch (error) {
+      console.error('Nonce generation error:', error);
+      ResponseHandler.error(res, 'Failed to generate nonce');
+    }
+  }
+
+  // Wallet-based login with signature verification
+  async walletLogin(req, res) {
+    try {
+      const { address, signature, nonce: providedNonce } = req.body;
+
+      if (!address || !signature || !providedNonce) {
+        return ResponseHandler.error(res, 'Missing required fields', 400);
+      }
+
+      if (!ethers.utils.isAddress(address)) {
+        return ResponseHandler.error(res, 'Invalid wallet address', 400);
+      }
+
+      const normalizedAddress = address.toLowerCase();
+
+      // Verify nonce exists and is not expired
+      const storedNonceData = nonces.get(normalizedAddress);
+      if (!storedNonceData) {
+        return ResponseHandler.error(res, 'No nonce found. Please request a new one.', 400);
+      }
+
+      if (storedNonceData.expiresAt < Date.now()) {
+        nonces.delete(normalizedAddress);
+        return ResponseHandler.error(res, 'Nonce expired. Please request a new one.', 400);
+      }
+
+      if (storedNonceData.nonce !== providedNonce) {
+        return ResponseHandler.error(res, 'Invalid nonce', 400);
+      }
+
+      // Verify signature
+      const message = `SwiftSplit Login\n\nSign this message to authenticate your wallet.\n\nNonce: ${providedNonce}`;
+      
+      let recoveredAddress;
+      try {
+        recoveredAddress = ethers.utils.verifyMessage(message, signature);
+      } catch (err) {
+        return ResponseHandler.error(res, 'Invalid signature', 400);
+      }
+
+      if (recoveredAddress.toLowerCase() !== normalizedAddress) {
+        return ResponseHandler.error(res, 'Signature verification failed', 401);
+      }
+
+      // Remove used nonce
+      nonces.delete(normalizedAddress);
+
+      // Find or create user
+      let user = await User.findOne({ walletAddress: normalizedAddress });
+
+      if (!user) {
+        // Create new user with wallet address
+        user = new User({
+          walletAddress: normalizedAddress,
+          name: `User ${address.substring(0, 6)}`,
+          role: 'freelancer',
+          authMethod: 'wallet'
+        });
+        await user.save();
+      }
+
+      // Generate JWT token
+      const token = jwt.sign(
+        { userId: user.id, walletAddress: user.walletAddress },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+
+      const userResponse = {
+        id: user.id,
+        walletAddress: user.walletAddress,
+        name: user.name,
+        role: user.role,
+        createdAt: user.createdAt
+      };
+
+      ResponseHandler.success(res, {
+        user: userResponse,
+        token
+      }, user.isNew ? 'Account created and logged in' : 'Login successful');
+
+    } catch (error) {
+      console.error('Wallet login error:', error);
+      ResponseHandler.error(res, 'Wallet authentication failed');
     }
   }
 }

@@ -5,7 +5,7 @@ const Sidebar = () => {
   const location = useLocation()
 
   const menuItems = [
-    { path: '/', icon: '📊', label: 'Dashboard' },
+    { path: '/dashboard', icon: '📊', label: 'Dashboard' },
     { path: '/payments', icon: '💸', label: 'Send Payment' },
     { path: '/team', icon: '👥', label: 'Team Management' },
     { path: '/analytics', icon: '📈', label: 'Analytics' },
@@ -15,8 +15,8 @@ const Sidebar = () => {
   const isActive = (path) => location.pathname === path
 
   return (
-    <aside className="fixed left-0 top-16 h-screen w-64 bg-white border-r border-gray-200">
-      <nav className="p-4">
+    <aside className="fixed left-0 top-20 h-screen w-60 bg-white border-r border-gray-200">
+      <nav className="p-4 overflow-y-auto" style={{ height: 'calc(100vh - 5rem)' }}>
         <ul className="space-y-2">
           {menuItems.map((item) => (
             <li key={item.path}>

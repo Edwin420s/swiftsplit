@@ -1,30 +1,18 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import Button from '../components/ui/Button'
-import InputField from '../components/ui/InputField'
 import { useWallet } from '../contexts/WalletContext'
 
 const Landing = () => {
   const navigate = useNavigate()
-  const { createAccount } = useWallet()
-  const [showSignup, setShowSignup] = useState(false)
-  const [formData, setFormData] = useState({ name: '', email: '' })
-  const [isCreating, setIsCreating] = useState(false)
+  const { connectWallet, isConnected, isLoading } = useWallet()
 
-  const handleGetStarted = () => {
-    setShowSignup(true)
-  }
-
-  const handleCreateAccount = async (e) => {
-    e.preventDefault()
-    setIsCreating(true)
+  const handleConnectWallet = async () => {
     try {
-      await createAccount(formData)
+      await connectWallet()
       navigate('/dashboard')
     } catch (error) {
-      console.error('Account creation failed:', error)
-    } finally {
-      setIsCreating(false)
+      console.error('Wallet connection failed:', error)
     }
   }
 
@@ -53,6 +41,33 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen bg-dark">
+      {/* Header */}
+      <header className="border-b border-accent/20 py-6">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-between items-center">
+            {/* Logo */}
+            <div className="flex items-center">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">SS</span>
+              </div>
+              <span className="ml-3 text-xl font-semibold text-primary">
+                SwiftSplit
+              </span>
+            </div>
+
+            {/* Connect Wallet Button */}
+            <Button
+              onClick={handleConnectWallet}
+              variant="outline"
+              size="sm"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Connecting...' : isConnected ? `${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}` : 'Connect Wallet'}
+            </Button>
+          </div>
+        </div>
+      </header>
+
       {/* Hero Section */}
       <div className="container mx-auto px-4 py-20">
         <div className="text-center mb-16">
@@ -67,15 +82,15 @@ const Landing = () => {
           </p>
           
           <div className="flex gap-4 justify-center">
-            <Button 
-              onClick={handleGetStarted}
+            <Button
+              onClick={() => navigate('/dashboard')}
               variant="primary"
               size="lg"
               className="px-8 py-4 text-lg"
             >
               Get Started
             </Button>
-            <Button 
+            <Button
               onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}
               variant="outline"
               size="lg"
@@ -152,61 +167,16 @@ const Landing = () => {
           <p className="text-lg text-muted mb-8 max-w-2xl mx-auto">
             Join thousands of freelancers and teams managing payments with SwiftSplit
           </p>
-          <Button 
-            onClick={handleGetStarted}
+          <Button
+            onClick={() => navigate('/dashboard')}
             variant="primary"
             size="lg"
             className="px-12 py-4 text-lg"
           >
-            Launch App
+            Get Started
           </Button>
         </div>
       </div>
-
-      {/* Signup Modal */}
-      {showSignup && (
-        <div className="fixed inset-0 bg-dark/80 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-surface p-8 rounded-xl border border-accent/30 max-w-md w-full mx-4">
-            <h2 className="text-2xl font-bold mb-6 text-primary">Create Your Account</h2>
-            <form onSubmit={handleCreateAccount}>
-              <InputField
-                label="Full Name"
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Enter your name"
-                required
-              />
-              <InputField
-                label="Email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="Enter your email"
-                required
-              />
-              <div className="flex gap-4 mt-6">
-                <Button
-                  type="button"
-                  onClick={() => setShowSignup(false)}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  className="flex-1"
-                  disabled={isCreating}
-                >
-                  {isCreating ? 'Creating...' : 'Create Account'}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Footer */}
       <footer className="border-t border-accent/20 py-8 mt-20">

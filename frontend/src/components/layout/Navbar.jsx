@@ -2,7 +2,7 @@ import React from 'react'
 import { useWallet } from '../../contexts/WalletContext'
 
 const Navbar = () => {
-  const { user, walletBalance } = useWallet()
+  const { user, walletBalance, walletAddress } = useWallet()
 
   return (
     <nav className="bg-white border-b border-gray-200 fixed w-full z-50">
@@ -43,7 +43,7 @@ const Navbar = () => {
               </div>
               <div className="hidden md:block">
                 <div className="text-sm font-medium text-secondary">{user?.name}</div>
-                <div className="text-xs text-gray-500">{user?.role}</div>
+                <div className="text-xs text-gray-500">{walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : user?.role}</div>
               </div>
             </div>
           </div>

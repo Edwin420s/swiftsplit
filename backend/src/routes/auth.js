@@ -43,4 +43,20 @@ router.put('/profile',
   authController.updateProfile
 );
 
+// Wallet authentication routes
+router.get('/nonce',
+  authController.getNonce
+);
+
+router.post('/wallet-login',
+  authLimiter,
+  [
+    body('address').isString().notEmpty(),
+    body('signature').isString().notEmpty(),
+    body('nonce').isString().notEmpty()
+  ],
+  handleValidationErrors,
+  authController.walletLogin
+);
+
 module.exports = router;

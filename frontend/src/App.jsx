@@ -39,6 +39,7 @@ function App() {
           <Route path="/team" element={<Layout><TeamManagement /></Layout>} />
           <Route path="/analytics" element={<Layout><Analytics /></Layout>} />
           <Route path="/settings" element={<Layout><Settings /></Layout>} />
+          <Route path="*" element={<Layout><Dashboard /></Layout>} />
         </Routes>
         <ToastContainer />
       </Router>
