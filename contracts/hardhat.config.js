@@ -19,7 +19,7 @@ module.exports = {
     // Arc Testnet
     arcTestnet: {
       url: process.env.ARC_RPC_URL || "https://api-sepolia.arcscan.network/rpc",
-      chainId: 47279324479,
+      chainId: 5042002,
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       gasPrice: 2000000000,
       timeout: 60000
@@ -53,7 +53,7 @@ module.exports = {
     customChains: [
       {
         network: "arcTestnet",
-        chainId: 47279324479,
+        chainId: 5042002,
         urls: {
           apiURL: "https://api-sepolia.arcscan.network/api",
           browserURL: "https://sepolia.arcscan.network"
