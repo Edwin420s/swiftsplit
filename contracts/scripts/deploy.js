@@ -9,18 +9,13 @@ async function main() {
   
   const MAX_PAYMENT_AMOUNT = ethers.parseUnits("10000", 6); // $10,000 max
   
-  // Deploy MockUSDC for testing or use existing USDC on mainnet
+  // Use existing USDC on mainnet
   let usdcAddress;
   if (process.env.USDC_ADDRESS) {
     usdcAddress = process.env.USDC_ADDRESS;
     console.log("📌 Using existing USDC at:", usdcAddress);
   } else {
-    console.log("📦 Deploying MockUSDC for testing...");
-    const MockUSDC = await ethers.getContractFactory("MockUSDC");
-    const mockUSDC = await MockUSDC.deploy(6);
-    await mockUSDC.waitForDeployment();
-    usdcAddress = await mockUSDC.getAddress();
-    console.log("✅ MockUSDC deployed to:", usdcAddress);
+    throw new Error("USDC_ADDRESS environment variable not set. Please provide the USDC contract address.");
   }
   
   console.log("📦 Deploying SwiftSplit...");
