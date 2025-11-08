@@ -61,9 +61,14 @@ const Dashboard = () => {
             Here's your payment overview and recent activity.
           </p>
         </div>
-        <Button onClick={refreshBalance} variant="outline">
-          Refresh Balance
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={refreshBalance} variant="outline">
+            Refresh Balance
+          </Button>
+          <Button onClick={() => window.history.back()} variant="secondary">
+            Back
+          </Button>
+        </div>
       </div>
 
       {/* Stats Grid */}

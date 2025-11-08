@@ -56,3 +56,4 @@ contracts/.env
 # AI modules
 ai-modules/.cache/
 ai-modules/tmp/
+

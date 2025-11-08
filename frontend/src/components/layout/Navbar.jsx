@@ -38,14 +38,21 @@ const Navbar = () => {
             )}
 
             {/* Connect Wallet Button */}
-            <Button
-              onClick={handleConnectWallet}
-              variant={isConnected ? "outline" : "primary"}
-              size="sm"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Connecting...' : isConnected ? `${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}` : 'Connect Wallet'}
-            </Button>
+            {!isConnected ? (
+              <Button
+                onClick={handleConnectWallet}
+                variant="primary"
+                size="sm"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Connecting...' : 'Connect Wallet'}
+              </Button>
+            ) : (
+              <div className="bg-green-100 px-3 py-2 rounded-lg border border-green-200">
+                <div className="text-xs text-green-600 font-medium">Connected</div>
+                <div className="text-sm font-mono text-green-800">{walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}</div>
+              </div>
+            )}
 
             {/* User Profile - only show if connected */}
             {isConnected && user && (
