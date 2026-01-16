@@ -3,7 +3,7 @@ const ResponseHandler = require('../utils/responseHandler');
 const errorMiddleware = (error, req, res, next) => {
   console.error('Error:', error);
 
-  // MongoDB/Mongoose errors
+  // MongoDB/Mongoose errors 
   if (error.name === 'ValidationError') {
     const errors = Object.values(error.errors).map(err => ({
       field: err.path,
