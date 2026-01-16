@@ -6,7 +6,7 @@ class InvoiceParser {
   }
 
   /**
-   * Main function to parse invoice files
+   * Main function to parse invoice files 
    * @param {Buffer} fileBuffer - The invoice file buffer
    * @param {string} fileType - File type: 'pdf', 'jpg', 'png', 'jpeg'
    * @returns {Object} Parsed payment intent
