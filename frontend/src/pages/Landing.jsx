@@ -181,7 +181,7 @@ const Landing = () => {
       {/* Footer */}
       <footer className="border-t border-accent/20 py-8 mt-20">
         <div className="container mx-auto px-4 text-center text-muted">
-          <p>&copy; 2025 SwiftSplit. Powered by Arc Blockchain & Circle USDC</p>
+          <p>&copy; 2026 SwiftSplit. Powered by Arc Blockchain & Circle USDC</p>
         </div>
       </footer>
     </div>
